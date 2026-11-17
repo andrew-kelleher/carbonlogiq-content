@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="Follow a model request through Azure API Management and see what changes when you configure identity, token limits, routing and caching.">
+<title>What does Azure API Management do between an AI application and its models? | CarbonLogiQ</title>
+<style>
+:root{color-scheme:light;--bg:#ffffff;--panel:#ffffff;--edge:#d9dce9;--muted:#484b5a;--text:#15141b;--brand:#4856a8;--green:#196049;--amber:#795009;--red:#a02d32;--mono:"Cascadia Code",Consolas,monospace;font-family:Inter,"Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;color:var(--text);background:var(--bg);line-height:1.55}a{color:var(--brand);text-underline-offset:.22em}button,input,select{font:inherit}button,select,summary,label[for]{cursor:pointer}:focus-visible{outline:3px solid var(--brand);outline-offset:4px}h1,h2,h3,p{margin:0}code{font-family:var(--mono);font-size:.89em;color:var(--brand);overflow-wrap:anywhere}small{font-size:.82rem}.wrap{width:min(1240px,calc(100% - 64px));margin:auto}.skip{position:absolute;top:(-100px);transform:translateY(-200%);z-index:5;background:var(--panel);padding:12px}.skip:focus{transform:none}.micro{font:600 .73rem/1.45 var(--mono);letter-spacing:.085em;text-transform:uppercase}.micro{color:var(--muted)}.hero{padding:52px 0 32px}.hero h1{font-family:Helvetica,Arial,sans-serif;font-size:clamp(2.05rem,4.5vw,4.15rem);line-height:1.025;letter-spacing:-.064em;max-width:1050px;margin:0 0 17px;text-wrap:balance}.hero p:last-child{color:var(--muted);font-size:clamp(1rem,1.5vw,1.13rem);max-width:780px}
+.lab{border:1px solid var(--edge);border-radius:17px;background:var(--panel);overflow:hidden}.toolbar{display:flex;align-items:end;justify-content:space-between;gap:16px;padding:16px 21px;border-bottom:1px solid var(--edge);background:#f4f5fb}.scenario{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px}.scenario label{color:var(--muted)}.actions{display:flex;gap:10px;align-items:center}.button,select{min-height:44px;border:1px solid #858ba4;border-radius:8px;color:var(--text);background:#ffffff;padding:8px 11px}.button{white-space:nowrap}.button:hover,select:hover{border-color:var(--brand)}.primary{background:#4856a8;color:#ffffff;border-color:#4856a8;font-weight:750;padding-inline:15px}.primary:hover{background:#364389}.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(275px,31%)}.canvas{grid-column:1;grid-row:1;padding:21px;min-width:0}.controls{grid-column:2;grid-row:1;border-left:1px solid var(--edge);padding:21px;background:#fafafe;min-width:0}.panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.panel-head h3,.controls h3{font-size:1.03rem;letter-spacing:-.018em}.map{padding:17px;background:radial-gradient(circle,#cbd0e5 1px,transparent 1.2px) 0 0/16px 16px,#f5f6fc;border:1px solid var(--edge);border-radius:12px}.diagram{display:grid;grid-template-columns:minmax(0,.86fr) 22px minmax(0,1.38fr) 22px minmax(0,1fr);align-items:center;min-height:158px}.node{border:1px solid var(--edge);border-radius:10px;background:#ffffff;padding:11px;min-width:0}.node strong{display:block;font-size:.89rem;line-height:1.3;margin:4px 0}.node small{display:block;color:var(--muted);line-height:1.35}.node .micro{font-size:.65rem}.gateway{padding:12px;background:#e9edfb;border-color:#727fc0}.node[data-state="active"]{border-color:#4856a8;box-shadow:0 0 16px #4856a81a}.node[data-state="stop"]{border-color:#b84b50}.node[data-state="cache"]{border-color:#39846c}.node[data-state="idle"]{background:#fafafe}.models{display:grid;gap:8px}.connector{color:#68708b;text-align:center;font:1rem var(--mono)}.connector[data-on="true"]{color:var(--brand)}.connector .vertical{display:none}.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}.chip{font:.66rem/1.35 var(--mono);color:var(--muted);border:1px solid #a6aec9;background:#f9faff;border-radius:4px;padding:3px 5px}.chip[data-state="pass"]{color:var(--brand);border-color:#8793cb}.chip[data-state="stop"]{color:var(--red);border-color:#c0767a}.response{margin-top:12px;padding-top:10px;border-top:1px dashed #9199b8;color:var(--muted);font:.73rem/1.55 var(--mono)}.response span{color:var(--brand)}
+.result{margin-top:13px;border:1px solid var(--edge);border-radius:11px;padding:14px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;background:#f4f5fb}.status{font:700 .89rem/1 var(--mono);border:1px solid #6e9c89;border-radius:7px;color:var(--green);padding:9px 10px;background:#e7f5ef}.result[data-tone="warn"] .status{border-color:#ad8a41;color:var(--amber);background:#fff4d9}.result[data-tone="error"] .status{border-color:#bd777a;color:var(--red);background:#fae9e8}.result h3{font-size:.98rem;line-height:1.35;margin:0 0 3px}.result p{font-size:.87rem;color:var(--muted)}.trace{margin-top:13px;border:1px solid var(--edge);border-radius:10px;padding:0 12px;background:#ffffff}.trace summary,.notes summary{min-height:44px;padding:10px 0;font-weight:650}.trace summary::marker,.notes summary::marker{color:var(--brand)}.trace ol{padding:0;list-style:none;margin:0 0 10px}.trace li{border-top:1px solid #e5e7f0;padding:7px 0;font-size:.8rem;color:var(--muted)}.trace li strong{color:var(--text);font-weight:650}.controls form{margin-top:10px}.conditions{display:grid;grid-template-columns:1fr;gap:10px;padding-bottom:13px;border-bottom:1px solid var(--edge)}.conditions label{display:grid;gap:3px;color:var(--muted);font-size:.8rem}.conditions select{width:100%;font-size:.85rem}.controls fieldset{padding:0;margin:13px 0 0;border:0;min-width:0}.controls legend{padding:0;margin-bottom:3px}.switch{display:flex;gap:9px;align-items:center;justify-content:space-between;min-height:44px;border-bottom:1px solid #e5e7f0;font-size:.86rem;cursor:pointer}.switch:last-child{border-bottom:0}.switch input{appearance:none;margin:0;flex:0 0 37px;width:37px;height:22px;border:1px solid #737b95;border-radius:20px;background:#eceef5;position:relative;cursor:pointer}.switch input::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#646d87}.switch input:checked{background:#4856a8;border-color:#4856a8}.switch input:checked::after{transform:translateX(15px);background:white}.controls .hint{margin-top:12px;color:var(--muted);font-size:.78rem}.notes{margin:27px 0 0;border-top:1px solid var(--edge);border-bottom:1px solid var(--edge)}.notes summary{font-size:1.05rem}.notes .scope{font-size:.87rem;color:var(--muted);max-width:82ch;margin:3px 0 14px}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding-bottom:16px}.card{padding:14px;background:var(--panel);border:1px solid var(--edge);border-radius:10px}.card h3{font-size:.93rem;margin-bottom:5px}.card p{font-size:.83rem;color:var(--muted);margin-bottom:6px}.card a{font-size:.78rem}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}.play .node[data-state="active"],.play .node[data-state="cache"],.play .node[data-state="stop"]{animation:pulse .55s ease-out}.play .gateway{animation-delay:.12s!important}.play .models .node{animation-delay:.24s!important}@keyframes pulse{50%{box-shadow:0 0 0 3px #4856a84d}}
+@media(max-width:900px){.wrap{width:calc(100% - 36px)}.canvas,.controls{padding:15px}.map{padding:12px}.diagram{grid-template-columns:minmax(0,.9fr) 14px minmax(0,1.32fr) 14px minmax(0,1fr)}.node,.gateway{padding:8px}}
+@media(max-width:740px){.hero{padding:32px 0 23px}.grid{grid-template-columns:minmax(0,1fr)}.canvas,.controls{grid-column:1;grid-row:auto}.controls{border-left:0;border-bottom:1px solid var(--edge)}.conditions,.controls fieldset{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}.conditions{gap:8px 14px}.switch:nth-last-child(2){border-bottom:0}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.wrap{width:calc(100% - 24px)}.toolbar{padding:12px;display:grid;grid-template-columns:minmax(0,1fr);gap:8px}.scenario{display:grid;grid-template-columns:minmax(0,1fr);gap:4px}.scenario select{width:100%}.canvas,.controls{padding:12px}.diagram{grid-template-columns:minmax(0,1fr);min-height:0}.connector .horizontal{display:none}.connector .vertical{display:inline}.models{grid-template-columns:repeat(2,minmax(0,1fr))}.cards{grid-template-columns:minmax(0,1fr)}.hero h1{text-wrap:wrap;letter-spacing:-.05em}}
+@media(max-width:340px){.controls fieldset,.conditions{grid-template-columns:minmax(0,1fr)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;scroll-behavior:auto!important}}
+@media(forced-colors:active){.switch input{appearance:auto;flex-basis:auto}.switch input::after{display:none}}
+.skip{top:0;left:12px}
+.hero h1 span{color:var(--brand)}
+
+.node-icon-row{display:flex;align-items:center;gap:7px;min-height:22px}
+.node-icon{width:22px;height:22px;flex:none;display:block}
+.icon-library{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
+main.wrap{padding-bottom:24px}
+.notes+.notes{margin-top:0;border-top:0}
+.resource-links{margin:0;padding:0 0 14px 1.25rem;font-size:.88rem}
+.resource-links li+li{margin-top:8px}
+</style>
+</head>
+<body>
+<!-- Microsoft product artwork from the Azure Architecture Center icon collection.
+     Python logo artwork from https://www.python.org/community/logos/. -->
+<svg class="icon-library" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="python-blue" x1="26.648937" y1="20.603781" x2="135.66525" y2="114.39767" gradientUnits="userSpaceOnUse" gradientTransform="matrix(.562541,0,0,.567972,-14.99112,-11.702371)">
+      <stop stop-color="#5a9fd4"/><stop offset="1" stop-color="#306998"/>
+    </linearGradient>
+    <linearGradient id="python-yellow" x1="150.96111" y1="192.35176" x2="112.03144" y2="137.27299" gradientUnits="userSpaceOnUse" gradientTransform="matrix(.562541,0,0,.567972,-14.99112,-11.702371)">
+      <stop stop-color="#ffd43b"/><stop offset="1" stop-color="#ffe873"/>
+    </linearGradient>
+    <linearGradient id="apim-cloud" x1="9" y1="16.82" x2="9" y2="1.18" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#198ab3"/><stop offset=".09" stop-color="#1f9dc4"/><stop offset=".24" stop-color="#28b5d9"/><stop offset=".4" stop-color="#2dc6e9"/><stop offset=".57" stop-color="#31d1f2"/><stop offset=".78" stop-color="#32d4f5"/>
+    </linearGradient>
+    <linearGradient id="apim-port" x1="8.36" y1="11.35" x2="8.36" y2="14.46" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c69aeb"/><stop offset="1" stop-color="#6f4bb2"/>
+    </linearGradient>
+    <linearGradient id="foundry-left" x1="5.642" y1="16.984" x2="5.642" y2=".83" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#302EC9"/><stop offset=".446" stop-color="#302EC9"/><stop offset=".949" stop-color="#CACAFB"/><stop offset="1" stop-color="#7F7EAF"/>
+    </linearGradient>
+    <linearGradient id="foundry-right" x1="14.186" y1="11.73" x2="14.186" y2="5.526" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3530C3"/><stop offset=".5" stop-color="#6D71D1"/><stop offset=".967" stop-color="#C0BFF5"/><stop offset="1" stop-color="#E3E4FF"/>
+    </linearGradient>
+    <linearGradient id="foundry-fold" x1="12.263" y1="11.683" x2="12.263" y2="1.766" gradientUnits="userSpaceOnUse">
+      <stop offset=".02" stop-color="#201BA6"/><stop offset=".64" stop-color="#2D29C7"/><stop offset="1" stop-color="#201BA6"/>
+    </linearGradient>
+    <linearGradient id="foundry-fold-base" x1="10.909" y1="6.342" x2="13.617" y2="6.342" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#302EC9"/><stop offset=".12" stop-color="#151698"/><stop offset=".25" stop-color="#0A0B7E"/><stop offset=".43" stop-color="#090C7F"/><stop offset=".51" stop-color="#141698"/><stop offset=".61" stop-color="#282AC4"/><stop offset=".77" stop-color="#8E8FF4"/><stop offset=".85" stop-color="#A7A6F7"/><stop offset=".91" stop-color="#CACAFB"/><stop offset="1" stop-color="#fff"/>
+    </linearGradient>
+    <clipPath id="foundry-bounds"><path transform="translate(1.497 1)" d="M0 0h15.004v16H0z"/></clipPath>
+    <path id="foundry-fold-shape" d="M11.957 11.683c.038 0 .075-.1.075-.238V7.577c0-.853.66-1.76 1.585-2.034-.057-.188-.645-2.112-.81-2.646C12.631 2.335 12.131 1 11.52 1a.09.09 0 0 0-.014.001c-.047.008-.091.053-.135.129-.32.583-.463 3.015-.463 4.837V8.23c.275.97.912 3.217.961 3.353 0 0 .05.1.088.1Z"/>
+  </defs>
+  <symbol id="python-icon" viewBox="0 0 112 113">
+    <path fill="url(#python-blue)" d="M 54.918785,9.1927421e-4 C 50.335132,0.02221727 45.957846,0.41313697 42.106285,1.0946693 30.760069,3.0991731 28.700036,7.2947714 28.700035,15.032169 v 10.21875 h 26.8125 v 3.40625 h -26.8125 -10.0625 c -7.792459,0 -14.6157588,4.683717 -16.7499998,13.59375 -2.46181998,10.212966 -2.57101508,16.586023 0,27.25 1.9059283,7.937852 6.4575432,13.593748 14.2499998,13.59375 h 9.21875 v -12.25 c 0,-8.849902 7.657144,-16.656248 16.75,-16.65625 h 26.78125 c 7.454951,0 13.406253,-6.138164 13.40625,-13.625 v -25.53125 c 0,-7.2663386 -6.12998,-12.7247771 -13.40625,-13.9374997 C 64.281548,0.32794397 59.502438,-0.02037903 54.918785,9.1927421e-4 Z m -14.5,8.21875012579 c 2.769547,0 5.03125,2.2986456 5.03125,5.1249996 -2e-6,2.816336 -2.261703,5.09375 -5.03125,5.09375 -2.779476,-1e-6 -5.03125,-2.277415 -5.03125,-5.09375 -10e-7,-2.826353 2.251774,-5.1249996 5.03125,-5.1249996 z"/>
+    <path fill="url(#python-yellow)" d="m 85.637535,28.657169 v 11.90625 c 0,9.230755 -7.825895,16.999999 -16.75,17 h -26.78125 c -7.335833,0 -13.406249,6.278483 -13.40625,13.625 v 25.531247 c 0,7.266344 6.318588,11.540324 13.40625,13.625004 8.487331,2.49561 16.626237,2.94663 26.78125,0 6.750155,-1.95439 13.406253,-5.88761 13.40625,-13.625004 V 86.500919 h -26.78125 v -3.40625 h 26.78125 13.406254 c 7.792461,0 10.696251,-5.435408 13.406241,-13.59375 2.79933,-8.398886 2.68022,-16.475776 0,-27.25 -1.92578,-7.757441 -5.60387,-13.59375 -13.406241,-13.59375 z m -15.0625,64.65625 c 2.779478,3e-6 5.03125,2.277417 5.03125,5.093747 -2e-6,2.826354 -2.251775,5.125004 -5.03125,5.125004 -2.76955,0 -5.03125,-2.29865 -5.03125,-5.125004 2e-6,-2.81633 2.261697,-5.093747 5.03125,-5.093747 z"/>
+  </symbol>
+  <symbol id="apim-icon" viewBox="0 0 18 18">
+    <path d="M14.18,5.89A4.85,4.85,0,0,0,9.23,1.18,5,5,0,0,0,4.48,4.47,4.61,4.61,0,0,0,.5,9,4.67,4.67,0,0,0,5.29,13.5a3,3,0,0,0,.42,0h1.2a1.47,1.47,0,0,1-.11-.56v0A1.51,1.51,0,0,1,7,12.21H5.6l-.31,0A3.41,3.41,0,0,1,1.77,9,3.33,3.33,0,0,1,4.68,5.73l.76-.12.25-.73A3.73,3.73,0,0,1,9.23,2.45,3.6,3.6,0,0,1,12.91,5.9V7L14,7.15a2.59,2.59,0,0,1,2.26,2.49,2.63,2.63,0,0,1-2.62,2.54h-.15l-.08,0h-1A3.92,3.92,0,0,0,8.54,9a.64.64,0,1,0,0,1.27,2.65,2.65,0,0,1,0,5.29.64.64,0,1,0,0,1.27,3.92,3.92,0,0,0,3.87-3.34h1.05a.64.64,0,0,0,.2,0A3.91,3.91,0,0,0,17.5,9.64,3.86,3.86,0,0,0,14.18,5.89Z" fill="url(#apim-cloud)"/>
+    <rect x="6.8" y="11.35" width="3.12" height="3.12" rx="1.54" fill="url(#apim-port)"/>
+  </symbol>
+  <symbol id="foundry-icon" viewBox="0 0 18 18">
+    <g clip-path="url(#foundry-bounds)">
+      <use href="#foundry-fold-shape" fill="url(#foundry-fold-base)"/>
+      <use href="#foundry-fold-shape" fill="url(#foundry-fold)"/>
+      <path d="M16.015 5.456h-1.807c-1.214 0-2.175 1.085-2.175 2.109v3.867c0 .139-.037.239-.074.239-.038 0-.088-.1-.088-.1s.075.212.175.212h1.98c.616 0 2.475-.611 2.475-2.52V6.006c0-.414-.237-.551-.486-.551Z" fill="url(#foundry-right)"/>
+      <path d="M2.336 17h5.38c2.346 0 3.194-2.034 3.194-3.807V5.967c0-2.084.188-4.967.612-4.967H8.296c-.768 0-1.43.824-2.178 2.484-.75 1.66-4.357 11.872-4.518 12.355-.262.787-.025 1.161.736 1.161Z" fill="url(#foundry-left)"/>
+    </g>
+  </symbol>
+</svg>
+<a class="skip" href="#scenario">Skip to the simulator</a>
+<main class="wrap">
+  <section class="hero" aria-labelledby="title">
+    <h1 id="title">What does <span>Azure API Management</span> do between an AI application and its models?</h1>
+    <p>The application calls one gateway endpoint. Azure API Management (APIM) checks the caller, applies the policies you configure and forwards eligible requests to a model deployment. Try a scenario to see where the request goes and what comes back.</p>
+  </section>
+  <section class="lab" aria-labelledby="lab-title">
+    <h2 class="sr-only" id="lab-title">Request simulator</h2>
+    <div class="toolbar">
+      <div class="scenario"><label class="micro" for="scenario">Scenario</label>
+        <select id="scenario">
+          <option value="standard">Healthy request</option><option value="unsigned">Missing access token</option><option value="forbidden">Caller lacks permission</option><option value="quota">Daily quota exhausted</option><option value="rate">Minute limit exceeded</option><option value="cache">Similar prompt in cache</option><option value="failover">Primary circuit open</option><option value="failure">Model returns 503</option><option value="custom" disabled>Custom settings</option>
+        </select>
+      </div>
+      <div class="actions"><button class="button primary" id="run" type="button">Run request <span aria-hidden="true">→</span></button><button class="button" id="reset" type="button">Reset</button></div>
+    </div>
+    <noscript><p style="padding:16px">Enable JavaScript to run the simulator. The architecture notes below explain each policy.</p></noscript>
+    <div class="grid">
+      <aside class="controls" aria-labelledby="controls-title">
+        <h3 id="controls-title">Request conditions</h3>
+        <form id="controls">
+          <div class="conditions">
+            <label>Caller identity <select name="caller"><option value="allowed">Valid and permitted</option><option value="missing">Missing token</option><option value="denied">Valid, lacks permission</option></select></label>
+            <label>Token pressure <select name="usage"><option value="normal">Within both limits</option><option value="quota">Daily quota exhausted</option><option value="rate">Minute limit reached</option><option value="both">Both limits reached</option></select></label>
+            <label>Prompt similarity <select name="prompt"><option value="new">No matching entry</option><option value="similar">Matches a cached prompt</option></select></label>
+            <label>Primary deployment <select name="health"><option value="ok">Available</option><option value="open">Circuit already open</option><option value="error">Returns HTTP 503</option></select></label>
+          </div>
+          <fieldset>
+            <legend class="micro">Gateway controls</legend>
+            <label class="switch">Authentication &amp; authorization <input type="checkbox" name="auth" checked></label>
+            <label class="switch">Daily token quota <input type="checkbox" name="quota" checked></label>
+            <label class="switch">Token rate limit <input type="checkbox" name="rate" checked></label>
+            <label class="switch">Priority backend pool <input type="checkbox" name="pool" checked></label>
+            <label class="switch">Semantic cache <input type="checkbox" name="cache" checked></label>
+            <label class="switch">Observability <input type="checkbox" name="telemetry" checked></label>
+          </fieldset>
+        </form>
+        <p class="hint">Settings update the result as you change them. Run request replays the path. Each run uses the selected starting conditions.</p>
+      </aside>
+      <div class="canvas">
+        <div class="panel-head"><h3>Request journey</h3><span class="micro">Simulated chat request</span></div>
+        <div class="map" id="map" aria-label="Request journey diagram">
+          <div class="diagram">
+            <div class="node" data-node="app"><div class="node-icon-row"><svg class="node-icon" role="img" aria-label="Python" focusable="false"><use href="#python-icon"/></svg><span class="micro">Caller</span></div><strong>AI application</strong><small>POST chat completion</small></div>
+            <div class="connector" aria-hidden="true" data-link="gateway"><span class="horizontal">→</span><span class="vertical">↓</span></div>
+            <div class="node gateway" data-node="gateway"><div class="node-icon-row"><svg class="node-icon" aria-hidden="true" focusable="false"><use href="#apim-icon"/></svg><span class="micro">Gateway</span></div><strong>Azure API Management</strong><small>Inbound policy pipeline</small><div class="chips"><span class="chip" data-step="auth">Identity</span><span class="chip" data-step="quota">Quota</span><span class="chip" data-step="rate">Rate</span><span class="chip" data-step="cache">Cache</span><span class="chip" data-step="route">Route</span></div></div>
+            <div class="connector" aria-hidden="true" data-link="backend"><span class="horizontal">→</span><span class="vertical">↓</span></div>
+            <div class="models">
+              <div class="node" data-node="primary"><div class="node-icon-row"><svg class="node-icon" role="img" aria-label="Microsoft Foundry" focusable="false"><use href="#foundry-icon"/></svg><span class="micro">Primary</span></div><strong>Chat deployment A</strong><small id="primary-detail">Model backend</small></div>
+              <div class="node" data-node="secondary"><div class="node-icon-row"><svg class="node-icon" role="img" aria-label="Microsoft Foundry" focusable="false"><use href="#foundry-icon"/></svg><span class="micro">Secondary</span></div><strong>Chat deployment B</strong><small id="secondary-detail">Model backend</small></div>
+            </div>
+          </div>
+          <p class="response"><span aria-hidden="true">↩</span> <span>Response path</span> · <b id="return-path">Deployment A → APIM → App</b></p>
+        </div>
+        <div class="result" id="result" role="status" aria-atomic="true" data-tone="ok"><span class="status" id="status">200</span><div><h3 id="outcome">Model response returned</h3><p id="explanation">Deployment A generated the completion. APIM relayed it to the application.</p></div></div>
+        <details class="trace" open><summary>Request trace <span class="micro">· simulated</span></summary><ol id="trace"><li>Run the simulator to inspect policy decisions.</li></ol></details>
+      </div>
+    </div>
+  </section>
+  <details class="notes">
+    <summary>Architecture and policy notes</summary>
+    <p class="scope">This lab models XML policies on an Azure API Management instance. Microsoft also documents a separately configured <a href="https://learn.microsoft.com/en-us/azure/api-management/ai-gateway-overview" target="_blank" rel="noopener">AI Gateway preview</a>. Check policy, tier, gateway and model API support before deploying.</p>
+    <div class="cards">
+      <article class="card"><h3>Identity on both hops</h3><p>Use <code>validate-azure-ad-token</code> to validate the caller’s Microsoft Entra token. The demo uses a separate authorization check that returns 403 for a valid caller without permission. Claim validation inside the same token policy uses its configured failure status, which defaults to 401. Grant APIM’s managed identity the appropriate role on the model backend.</p><a href="https://learn.microsoft.com/en-us/azure/api-management/api-management-authenticate-authorize-ai-apis" target="_blank" rel="noopener">AI API authentication ↗</a></article>
+      <article class="card"><h3>Rate and quota are different</h3><p><code>llm-token-limit</code> can apply a per-key tokens-per-minute limit (429) and a fixed UTC quota window (403). This demo checks an already exhausted daily budget first. Live usage can come from response token counts or estimates. Streaming and concurrent requests affect precision, and counters are tracked independently per gateway.</p><a href="https://learn.microsoft.com/en-us/azure/api-management/llm-token-limit-policy" target="_blank" rel="noopener">Token limit policy ↗</a></article>
+      <article class="card"><h3>Route by configuration</h3><p><code>set-backend-service</code> targets a backend or pool. Use <code>choose</code> for explicit model or operation rules. The two deployments here serve the same chat API contract. With the primary circuit already open, the configured priority pool can select the secondary.</p><a href="https://learn.microsoft.com/en-us/azure/api-management/backends" target="_blank" rel="noopener">Backend pools and circuit breakers ↗</a></article>
+      <article class="card"><h3>Cache within the right boundary</h3><p><code>llm-semantic-cache-lookup</code> compares embeddings against entries in a configured external cache such as Azure Managed Redis. <code>llm-semantic-cache-store</code> stores eligible responses. Set a similarity threshold, expiry and <code>vary-by</code> partition. Keep tenant, permission and model boundaries intact. The demo places lookup after token checks.</p><a href="https://learn.microsoft.com/en-us/azure/api-management/azure-openai-enable-semantic-caching" target="_blank" rel="noopener">Semantic caching setup ↗</a></article>
+      <article class="card"><h3>Separate gateway and backend errors</h3><p>A backend can return its own 429 or 503. A circuit opens according to its configured rules. To retry the same request after a failure, configure a bounded <code>retry</code> policy and consider replay safety. Verify what happens before and after a streaming response starts.</p><a href="https://learn.microsoft.com/en-us/azure/api-management/retry-policy" target="_blank" rel="noopener">Retry policy ↗</a></article>
+      <article class="card"><h3>Plan what to measure</h3><p>Configure diagnostics for status, latency and request correlation. <code>llm-emit-token-metric</code> can emit token usage to Application Insights. Choose low-cardinality metric dimensions and limit prompt and completion logging. Provider billing and capacity limits apply independently.</p><a href="https://learn.microsoft.com/en-us/azure/api-management/api-management-howto-app-insights" target="_blank" rel="noopener">Application Insights integration ↗</a></article>
+    </div>
+  </details>
+  <details class="notes">
+    <summary>Useful links</summary>
+    <ul class="resource-links">
+      <li><a href="https://learn.microsoft.com/en-us/azure/api-management/api-management-howto-policies" target="_blank" rel="noopener">Azure API Management policies ↗</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/api-management/unified-model-api" target="_blank" rel="noopener">Create a unified model API (preview) ↗</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/api-management/api-management-howto-api-inspector" target="_blank" rel="noopener">Debug APIM requests with tracing ↗</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/foundry/openai/concepts/model-router" target="_blank" rel="noopener">Microsoft Foundry Model Router ↗</a></li>
+    </ul>
+  </details>
+</main>
+<script>
+(() => {
+  const byId = id => document.getElementById(id);
+  const form = byId('controls');
+  const scenario = byId('scenario');
+  const map = byId('map');
+  const presets = {
+    standard: {},
+    unsigned: {caller: 'missing'},
+    forbidden: {caller: 'denied'},
+    quota: {usage: 'quota'},
+    rate: {usage: 'rate'},
+    cache: {prompt: 'similar'},
+    failover: {health: 'open'},
+    failure: {health: 'error'}
+  };
+
+  function simulate(settings) {
+    const steps = {};
+    const events = [['Application', 'Sent a chat completion request to the APIM endpoint.']];
+    function finish(code, title, explanation, source, backend = '') {
+      if (settings.telemetry) {
+        let detail = 'Sample diagnostics include the response status and its source.';
+        if (code === 200 && backend) {
+          detail += ' Sample token metric: 260 input + 140 output = 400 chat tokens.';
+        }
+        if (source === 'Semantic cache') {
+          detail += ' A cache hit can still involve a separate embeddings call.';
+        }
+        events.push(['Observability', detail]);
+      }
+      return {code, title, explanation, source, backend, events, steps};
+    }
+
+    if (settings.auth) {
+      if (settings.caller === 'missing') {
+        steps.auth = 'stop';
+        events.push(['Authentication', 'APIM rejected a request without a Microsoft Entra access token.']);
+        return finish(401, 'Access token required', 'The gateway stopped the request before calling a model.', 'APIM');
+      }
+      if (settings.caller === 'denied') {
+        steps.auth = 'stop';
+        events.push(['Authorization', 'The token passed validation. A separate permission rule denied access.']);
+        return finish(403, 'Caller lacks permission', 'The example authorization rule returned 403 before APIM called a model.', 'APIM');
+      }
+      steps.auth = 'pass';
+      events.push(['Caller access', 'The token is valid and the caller has permission to use the API.']);
+    } else {
+      events.push(['Caller access', 'The inbound identity and permission checks are disabled in this run.']);
+    }
+
+    if (settings.quota) {
+      if (settings.usage === 'quota' || settings.usage === 'both') {
+        steps.quota = 'stop';
+        events.push(['Daily quota', 'The caller’s counter has already used its daily token budget.']);
+        return finish(403, 'Daily token quota exhausted', 'APIM rejected the request. In this daily example, the quota window resets at 00:00 UTC.', 'APIM');
+      }
+      steps.quota = 'pass';
+      events.push(['Daily quota', 'The caller has room in the daily token budget.']);
+    }
+    if (settings.rate) {
+      if (settings.usage === 'rate' || settings.usage === 'both') {
+        steps.rate = 'stop';
+        events.push(['Token rate', 'The caller’s tokens-per-minute allowance is temporarily exhausted.']);
+        return finish(429, 'Token rate limit reached', 'APIM throttled the request. The client can retry when capacity returns and respect Retry-After when present.', 'APIM');
+      }
+      steps.rate = 'pass';
+      events.push(['Token rate', 'The caller has capacity under the per-minute limit.']);
+    }
+
+    if (settings.cache) {
+      steps.cache = 'pass';
+      if (settings.prompt === 'similar') {
+        events.push(['Cache hit', 'The prompt meets the similarity threshold within the configured cache partition.']);
+        return finish(200, 'Stored response returned', 'APIM reused a cached completion. The chat deployments received zero calls. Lookup can still use the embeddings backend.', 'Semantic cache');
+      }
+      events.push(['Cache miss', 'The lookup found no eligible match in the cache partition.']);
+    }
+
+    if (settings.health === 'open' && !settings.pool) {
+      steps.route = 'stop';
+      events.push(['Circuit breaker', 'The primary circuit is already open. The API is configured with a single backend.']);
+      return finish(503, 'Gateway skipped the primary', 'APIM returned 503 while the primary circuit was open. No chat deployment received this request.', 'APIM');
+    }
+
+    const backend = settings.health === 'open' ? 'secondary' : 'primary';
+    const deployment = backend === 'secondary' ? 'Deployment B' : 'Deployment A';
+    steps.route = 'pass';
+    const routing = {
+      secondary: 'The primary circuit is open. The priority pool selected deployment B.',
+      pooled: 'The priority pool selected the eligible primary deployment A.',
+      direct: 'The API’s single configured backend is deployment A.'
+    };
+    events.push(['Backend selection', routing[backend === 'secondary' ? 'secondary' : settings.pool ? 'pooled' : 'direct']]);
+    if (settings.health === 'error') {
+      events.push(['Backend response', 'Deployment A returned HTTP 503. This example has no same-request retry policy.']);
+      const nextRequest = settings.pool ? ' The pool can route later requests to B once A’s circuit opens.' : '';
+      return finish(503, 'Primary deployment returned 503', `The request reached deployment A and APIM relayed its error.${nextRequest}`, deployment, backend);
+    }
+    events.push(['Backend response', `${deployment} generated a completion.${settings.cache ? ' The outbound cache policy stores this eligible result.' : ''}`]);
+    return finish(200, backend === 'secondary' ? 'Secondary deployment answered' : 'Model response returned', `${deployment} generated the completion. APIM relayed it to the application.`, deployment, backend);
+  }
+
+  function currentSettings() {
+    const values = new FormData(form);
+    return {
+      caller: values.get('caller'), usage: values.get('usage'), prompt: values.get('prompt'), health: values.get('health'),
+      auth: values.has('auth'), quota: values.has('quota'), rate: values.has('rate'),
+      pool: values.has('pool'), cache: values.has('cache'), telemetry: values.has('telemetry')
+    };
+  }
+
+  function render(replay = false) {
+    const settings = currentSettings();
+    const result = simulate(settings);
+    const fromCache = result.source === 'Semantic cache';
+    const gatewayState = fromCache ? 'cache' : result.source === 'APIM' ? 'stop' : 'active';
+    const states = {app: 'active', gateway: gatewayState, primary: 'idle', secondary: 'idle'};
+    if (result.backend) states[result.backend] = result.code === 200 ? 'active' : 'stop';
+    for (const node of map.querySelectorAll('[data-node]')) node.dataset.state = states[node.dataset.node];
+    for (const chip of map.querySelectorAll('[data-step]')) chip.dataset.state = result.steps[chip.dataset.step] || 'idle';
+    map.querySelector('[data-link="gateway"]').dataset.on = 'true';
+    map.querySelector('[data-link="backend"]').dataset.on = String(Boolean(result.backend));
+    byId('primary-detail').textContent = result.backend === 'primary'
+      ? (result.code === 200 ? 'Invoked · answered' : 'Invoked · HTTP 503')
+      : (settings.health === 'open' ? 'Circuit open · skipped' : 'Not contacted');
+    byId('secondary-detail').textContent = result.backend === 'secondary'
+      ? 'Invoked · answered'
+      : (settings.pool ? 'Not contacted' : 'Outside selected route');
+
+    const origin = result.source === 'APIM' ? 'APIM' : `${result.source} → APIM`;
+    byId('return-path').textContent = `${origin} → App`;
+    byId('result').dataset.tone = result.code === 200 ? 'ok' : result.code === 429 ? 'warn' : 'error';
+    byId('status').textContent = result.code;
+    byId('outcome').textContent = result.title;
+    byId('explanation').textContent = result.explanation;
+    const trace = result.events.map(([label, message]) => {
+      const row = document.createElement('li');
+      const heading = document.createElement('strong');
+      heading.textContent = label;
+      row.append(heading, ` · ${message}`);
+      return row;
+    });
+    byId('trace').replaceChildren(...trace);
+
+    map.classList.remove('play');
+    if (replay) {
+      // Flush the removed class so a second run restarts the same animation.
+      void map.offsetWidth;
+      map.classList.add('play');
+    }
+  }
+
+  function loadPreset(name) {
+    form.reset();
+    for (const [field, value] of Object.entries(presets[name])) form.elements.namedItem(field).value = value;
+    scenario.value = name;
+    render();
+  }
+
+  scenario.addEventListener('change', () => loadPreset(scenario.value));
+  form.addEventListener('submit', event => event.preventDefault());
+  form.addEventListener('change', () => {
+    scenario.value = 'custom';
+    render();
+  });
+  byId('run').addEventListener('click', () => render(true));
+  byId('reset').addEventListener('click', () => loadPreset('standard'));
+  loadPreset('standard');
+})();
+</script>
+</body>
+</html>

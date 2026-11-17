@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="Follow a request from Azure Front Door through Application Gateway and private API Management to a container on AKS.">
+<title>Where does an API request get blocked on Azure? | CarbonLogiQ Architecture Lab</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #15141b; --muted: #484b5a; --brand: #4856a8; --line: #d9dce9;
+    --tint: #f4f5fb; --red: #a02d32; --green: #196049; --amber: #795009;
+    --mono: "Cascadia Code", Consolas, monospace;
+    font: 16px/1.55 Inter, "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--ink); background: white; }
+  main { width: min(1180px, calc(100% - 48px)); margin: auto; padding: clamp(24px, 5vw, 55px) 0 28px; }
+  h1, h2, h3, p { margin: 0; }
+  h1 { max-width: 950px; font: 750 clamp(2rem, 5.4vw, 3.9rem)/1.04 Helvetica, Arial, sans-serif; letter-spacing: -.054em; text-wrap: balance; }
+  h1 span, a, code { color: var(--brand); }
+  a { text-underline-offset: .18em; }
+  code { font-family: var(--mono); font-size: .92em; overflow-wrap: anywhere; }
+  .intro { max-width: 78ch; color: var(--muted); margin: 15px 0 25px; }
+  .micro { font: 650 .7rem/1.35 var(--mono); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  :focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+  .skip { position: absolute; top: 0; left: 12px; transform: translateY(-200%); background: white; padding: 10px; z-index: 1; }
+  .skip:focus { transform: none; }
+  .lab { border: 1px solid var(--line); border-radius: 16px; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 18px; border-radius: 15px 15px 0 0; background: var(--tint); border-bottom: 1px solid var(--line); }
+  .preset, .actions { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  button, select { min-height: 44px; border-radius: 8px; border: 1px solid #858ba4; color: var(--ink); background: white; padding: 7px 10px; font: inherit; }
+  button, summary, select, .switch { cursor: pointer; }
+  button:hover, select:hover { border-color: var(--brand); }
+  .run { background: var(--brand); border-color: var(--brand); color: white; font-weight: 750; }
+  .run:hover { background: #364389; }
+  .journey { padding: 18px; }
+  h2 { font-size: 1.04rem; margin-bottom: 10px; }
+  h3 { font-size: .95rem; }
+  .map { border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: radial-gradient(circle, #cbd0e5 1px, transparent 1.2px) 0 0 / 16px 16px, #f5f6fc; }
+  .path { display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.15fr) minmax(0,3.65fr); gap: 8px; }
+  .zone { display: grid; grid-template-rows: auto 1fr; min-width: 0; padding: 8px; border: 1px solid #cbd1e8; border-radius: 11px; background: #ffffffb8; }
+  .zone-regional { background: #edf0fc; }
+  .zone h3 { margin: 1px 1px 7px; color: var(--brand); }
+  .zone-nodes { display: grid; gap: 17px; list-style: none; margin: 0; padding: 0; }
+  .zone-regional .zone-nodes { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .icon-library { position: absolute; width: 0; height: 0; overflow: hidden; }
+  .node-label { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 7px; }
+  .node-icon { width: 24px; height: 24px; flex: none; display: block; color: var(--brand); }
+  .node { position: relative; min-width: 0; padding: 10px; border-radius: 9px; border: 1px solid var(--line); background: white; overflow-wrap: break-word; }
+  .node:not([data-hop="client"])::before { content: "→"; position: absolute; top: 50%; right: calc(100% + 2px); transform: translateY(-50%); color: #68708b; font: 1rem var(--mono); }
+  .zone:not(:first-child) .node:first-child::before { right: calc(100% + 5px); }
+  .node[data-state="reached"], .node[data-state="blocked"] { border-color: var(--brand); background: #f0f2ff; }
+  .node[data-state="blocked"] { border-color: #b84b50; background: #fdf0ef; }
+  .node[data-state="reached"]::before, .node[data-state="blocked"]::before { color: var(--brand); }
+  .node[data-state="pending"], .node[data-state="skipped"] { background: #fafafe; }
+  .node strong { display: block; font-size: .9rem; line-height: 1.25; margin: 4px 0; }
+  .node small { display: block; color: var(--muted); font-size: .79rem; line-height: 1.35; }
+  .node .state { display: block; font-size: .72rem; font-weight: 650; margin-top: 8px; color: var(--brand); }
+  .node[data-state="blocked"] .state { color: var(--red); }
+  .node[data-state="pending"] .state, .node[data-state="skipped"] .state { color: var(--muted); }
+  .return { margin-top: 13px; padding-top: 9px; border-top: 1px dashed #9199b8; color: var(--muted); font-size: .84rem; }
+  .return b { color: var(--brand); }
+  .grid { display: grid; grid-template-columns: minmax(0, .93fr) minmax(0, 1.07fr); border-top: 1px solid var(--line); }
+  .controls, .outcome { padding: 18px; min-width: 0; }
+  .controls { background: #fafafe; border-right: 1px solid var(--line); border-radius: 0 0 0 15px; }
+  .conditions { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 9px 12px; }
+  .conditions label { display: grid; gap: 3px; font-size: .83rem; color: var(--muted); }
+  .conditions select { width: 100%; font-size: .83rem; }
+  fieldset { padding: 0; margin: 16px 0 0; border: 0; min-width: 0; }
+  fieldset:first-child { margin-top: 0; }
+  legend { padding: 0; margin-bottom: 4px; }
+  .switch { min-height: 44px; display: flex; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px solid #e5e7f0; font-size: .87rem; }
+  .switch input { accent-color: var(--brand); width: 18px; height: 18px; flex: none; margin: 0 3px; }
+  .hint { font-size: .8rem; color: var(--muted); margin-top: 10px; }
+  .result { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; padding: 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--tint); }
+  .result p { color: var(--muted); font-size: .87rem; margin-top: 3px; }
+  .status { padding: 7px 9px; border-radius: 7px; font: 700 .9rem var(--mono); color: var(--green); background: #e7f5ef; border: 1px solid #6e9c89; }
+  [data-tone="error"] .status { color: var(--red); background: #fae9e8; border-color: #bd777a; }
+  [data-tone="warn"] .status { color: var(--amber); background: #fff4d9; border-color: #ad8a41; }
+  details summary { min-height: 44px; padding-block: 10px; font-weight: 650; }
+  summary::marker { color: var(--brand); }
+  .trace { border: 1px solid var(--line); padding: 0 12px; border-radius: 10px; margin-top: 13px; }
+  .trace ol { margin: 0; padding: 0 0 7px; list-style: none; }
+  .trace li { border-top: 1px solid #e5e7f0; padding: 7px 0; font-size: .82rem; color: var(--muted); }
+  .trace strong { color: var(--ink); }
+  .trace li[data-state="blocked"] { color: var(--red); }
+  .notes { border-block: 1px solid var(--line); margin-top: 24px; }
+  .notes + .notes { margin-top: 0; border-top: 0; }
+  .notes ul { padding: 0 0 12px 1.2em; margin: 0; color: var(--muted); font-size: .89rem; }
+  .notes li + li { margin-top: 7px; }
+  .notes li strong { color: var(--ink); }
+  .node.pulse { animation: pulse .6s ease-out; }
+  .node.pulse[data-state="blocked"],
+  .node.pulse[data-hop="aks"][data-state="reached"] { animation-iteration-count: 2; }
+  .node[data-state="blocked"] { --pulse-color: #a02d3280; }
+  .node[data-hop="aks"][data-state="reached"] { --pulse-color: #19604980; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 transparent; }
+    45% { box-shadow: 0 0 0 3px var(--pulse-color, #4856a84d); }
+  }
+  @media (max-width: 720px) {
+    main { width: calc(100% - 28px); }
+    .grid { grid-template-columns: 1fr; }
+    .controls { border-right: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+    .path { grid-template-columns: 1fr; gap: 21px; }
+    .zone { position: relative; }
+    .zone-regional .zone-nodes { grid-template-columns: 1fr; }
+    .node:not([data-hop="client"])::before { content: "↓"; top: auto; bottom: 100%; right: auto; left: 12px; transform: none; }
+    .zone:not(:first-child) .node:first-child::before { display: none; }
+    .zone:not(:first-child)::before { content: "↓"; position: absolute; bottom: calc(100% + 3px); left: 21px; color: var(--brand); font: 1rem var(--mono); }
+    .node .state { margin-top: 4px; }
+  }
+  @media (max-width: 490px) {
+    .toolbar, .preset { align-items: stretch; flex-direction: column; }
+    .toolbar, .journey, .controls, .outcome { padding: 12px; }
+    .preset { gap: 4px; }
+  }
+  @media (max-width: 360px) { .conditions { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { .node.pulse { animation: none; } }
+</style>
+</head>
+<body>
+<!-- Azure service artwork from the Microsoft Azure Architecture Center icon collection. -->
+<svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="front-door-blue" x1="9" y1="13.83" x2="9" y2="1.07" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0078d4"/><stop offset=".82" stop-color="#5ea0ef"/>
+    </linearGradient>
+    <linearGradient id="appgw-green" x1="9" y1="19.25" x2="9" y2="-.46" gradientTransform="translate(9 -3.73) rotate(45)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5e9624"/><stop offset=".55" stop-color="#6dad2a"/><stop offset="1" stop-color="#76bc2d"/>
+    </linearGradient>
+    <linearGradient id="appgw-node" x1="7.54" y1="6.44" x2="7.53" y2="5.18" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ccc"/><stop offset=".12" stop-color="#d7d7d7"/><stop offset=".42" stop-color="#ebebeb"/><stop offset=".72" stop-color="#f8f8f8"/><stop offset="1" stop-color="#fcfcfc"/>
+    </linearGradient>
+    <linearGradient id="appgw-small-node" x1="9.36" y1="7.69" x2="9.36" y2="6.57" href="#appgw-node"/>
+    <linearGradient id="aks-purple"><stop stop-color="#b77af4"/><stop offset="1" stop-color="#773adc"/></linearGradient>
+    <linearGradient id="apim-cloud" x1="9" y1="16.82" x2="9" y2="1.18" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#198ab3"/><stop offset=".09" stop-color="#1f9dc4"/><stop offset=".24" stop-color="#28b5d9"/><stop offset=".4" stop-color="#2dc6e9"/><stop offset=".57" stop-color="#31d1f2"/><stop offset=".78" stop-color="#32d4f5"/>
+    </linearGradient>
+    <linearGradient id="apim-port" x1="8.36" y1="11.35" x2="8.36" y2="14.46" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c69aeb"/><stop offset="1" stop-color="#6f4bb2"/>
+    </linearGradient>
+  </defs>
+  <symbol id="icon-client" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2.5" y="4.5" width="19" height="14" rx="2"/>
+      <path d="M2.5 8.5h19M9 21h6m-3-2.5V21M9 11.5l-2 2 2 2m6-4 2 2-2 2"/>
+    </g>
+  </symbol>
+  <symbol id="icon-front-door" viewBox="0 0 18 18">
+    <path d="M18,9.83A4,4,0,0,0,14.49,6,5.1,5.1,0,0,0,9.24,1.07a5.23,5.23,0,0,0-5,3.41A4.83,4.83,0,0,0,0,9.12a4.9,4.9,0,0,0,5.07,4.71l.44,0h8.21a.78.78,0,0,0,.22,0A4.09,4.09,0,0,0,18,9.83Z" fill="url(#front-door-blue)"/>
+    <path d="M6.63,6.82h5.06v7H6.63Z" fill="#f2f2f2"/>
+    <path d="M12.61,6.37l-3.49-2a.25.25,0,0,0-.31.15s0,.06,0,.08V16.68a.25.25,0,0,0,.24.25h.08l3.49-2.06a.25.25,0,0,0,.17-.23v-8A.26.26,0,0,0,12.61,6.37Z" fill="#50e6ff"/>
+  </symbol>
+  <symbol id="icon-appgw" viewBox="0 0 18 18">
+    <rect x="2.82" y="2.82" width="12.35" height="12.35" rx=".57" transform="translate(-3.73 9) rotate(-45)" fill="url(#appgw-green)"/>
+    <g fill="#fff">
+      <path d="M10.89,10.51h2.84a.11.11,0,0,0,.1-.11V7.57a.1.1,0,0,0-.18-.07l-.78.78,0,.05a.1.1,0,0,1-.14,0L9.26,4.91a.1.1,0,0,0-.14,0l-.88.88a.11.11,0,0,0,0,.15l3.41,3.41a.11.11,0,0,1,0,.15l-.05.05-.78.78A.11.11,0,0,0,10.89,10.51Z"/>
+      <path d="M6.92,10.51H4.08A.11.11,0,0,1,4,10.4V7.57a.1.1,0,0,1,.17-.07l.79.78,0,.05a.1.1,0,0,0,.14,0L8.55,4.91a.1.1,0,0,1,.14,0l.88.88a.11.11,0,0,1,0,.15L6.16,9.35a.11.11,0,0,0,0,.15l0,.05.78.78A.11.11,0,0,1,6.92,10.51Z"/>
+      <path d="M6.82,13.07l2,2a.1.1,0,0,0,.14,0l2-2a.1.1,0,0,0-.07-.17H9.72a.11.11,0,0,1-.1-.1V8a.1.1,0,0,0-.1-.11H8.28A.11.11,0,0,0,8.17,8V12.8a.1.1,0,0,1-.1.1H6.89A.1.1,0,0,0,6.82,13.07Z"/>
+    </g>
+    <path d="M10.65,7.78A2.71,2.71,0,0,1,7.33,3.5l0,0a2.71,2.71,0,0,1,3.29,4.3" fill="#0078d4"/>
+    <circle cx="7.53" cy="5.55" r=".87" fill="url(#appgw-node)"/>
+    <g fill="#f2f2f2" opacity=".55">
+      <path d="M6.67,7l.19.3L7,7.5a5.94,5.94,0,0,1,.34-1.1.85.85,0,0,1-.45-.23A6.71,6.71,0,0,0,6.67,7Z"/>
+      <path d="M7.24,4.73A4,4,0,0,1,7,3.8a2.48,2.48,0,0,0-.34.46A3.51,3.51,0,0,0,6.86,5,1,1,0,0,1,7.24,4.73Z"/>
+      <path d="M8.17,6.14a.87.87,0,0,1-.48.26,4.62,4.62,0,0,0,.46.41,4.14,4.14,0,0,0,.65.39V7.13A.53.53,0,0,1,9,6.73,3.6,3.6,0,0,1,8.17,6.14Z"/>
+      <path d="M10.79,7.2a4.14,4.14,0,0,1-.87-.1v0a.55.55,0,0,1-.16.39,3.84,3.84,0,0,0,1.08.08,2.93,2.93,0,0,0,.37-.42Z"/>
+    </g>
+    <circle cx="9.36" cy="7.13" r=".56" fill="url(#appgw-small-node)"/>
+    <circle cx="10.64" cy="5.74" r=".6" fill="#f2f2f2"/>
+    <g fill="#f2f2f2" opacity=".55">
+      <path d="M9.21,4.42A4.29,4.29,0,0,1,11.09,4a2.24,2.24,0,0,0-.47-.45,4.5,4.5,0,0,0-1.49.35c-.1,0-.19.11-.29.16h0a5.85,5.85,0,0,1-.63-.93l-.34.13a5.35,5.35,0,0,0,.65,1,3.92,3.92,0,0,0-.67.55.87.87,0,0,1,.43.35,3.29,3.29,0,0,1,.61-.48,9.16,9.16,0,0,0,1.17,1,.57.57,0,0,1,.2-.32A8.44,8.44,0,0,1,9.21,4.42Z"/>
+      <path d="M11.55,6.09h0l-.1,0h0l-.08,0h0l-.1-.06a.61.61,0,0,1-.2.3l.12.07h0l.11.06h0l.28.14h0a3.58,3.58,0,0,0,.09-.35Z"/>
+    </g>
+    <circle cx="7.53" cy="5.55" r=".87" fill="#f2f2f2"/><circle cx="9.36" cy="7.13" r=".56" fill="#f2f2f2"/>
+  </symbol>
+  <symbol id="icon-apim" viewBox="0 0 18 18">
+    <path d="M14.18,5.89A4.85,4.85,0,0,0,9.23,1.18,5,5,0,0,0,4.48,4.47,4.61,4.61,0,0,0,.5,9,4.67,4.67,0,0,0,5.29,13.5a3,3,0,0,0,.42,0h1.2a1.47,1.47,0,0,1-.11-.56v0A1.51,1.51,0,0,1,7,12.21H5.6l-.31,0A3.41,3.41,0,0,1,1.77,9,3.33,3.33,0,0,1,4.68,5.73l.76-.12.25-.73A3.73,3.73,0,0,1,9.23,2.45,3.6,3.6,0,0,1,12.91,5.9V7L14,7.15a2.59,2.59,0,0,1,2.26,2.49,2.63,2.63,0,0,1-2.62,2.54h-.15l-.08,0h-1A3.92,3.92,0,0,0,8.54,9a.64.64,0,1,0,0,1.27,2.65,2.65,0,0,1,0,5.29.64.64,0,1,0,0,1.27,3.92,3.92,0,0,0,3.87-3.34h1.05a.64.64,0,0,0,.2,0A3.91,3.91,0,0,0,17.5,9.64,3.86,3.86,0,0,0,14.18,5.89Z" fill="url(#apim-cloud)"/>
+    <rect x="6.8" y="11.35" width="3.12" height="3.12" rx="1.54" fill="url(#apim-port)"/>
+  </symbol>
+  <symbol id="icon-aks" viewBox="0 0 18 18">
+    <g fill="url(#aks-purple)">
+      <polygon points="5.8 1.22 2.94 1.75 2.94 5.65 5.8 6.26 8.67 5.11 8.67 2.2 5.8 1.22"/>
+      <polygon points="11.99 1.27 9.13 1.8 9.13 5.7 11.99 6.31 14.85 5.15 14.85 2.25 11.99 1.27"/>
+      <polygon points="2.87 6.6 0.01 7.13 0.01 11.03 2.87 11.64 5.74 10.49 5.74 7.58 2.87 6.6"/>
+      <polygon points="9.04 6.56 6.18 7.09 6.18 10.99 9.04 11.61 11.9 10.45 11.9 7.54 9.04 6.56"/>
+      <polygon points="15.21 6.61 12.35 7.14 12.35 11.04 15.21 11.65 18.08 10.5 18.08 7.59 15.21 6.61"/>
+      <polygon points="5.73 12.04 2.87 12.56 2.87 16.46 5.73 17.08 8.6 15.92 8.6 13.02 5.73 12.04"/>
+      <polygon points="11.91 12.08 9.05 12.61 9.05 16.51 11.91 17.12 14.78 15.97 14.78 13.06 11.91 12.08"/>
+    </g>
+    <g fill="#341a6e">
+      <path d="M2.94,1.75v3.9l2.89.61v-5Zm1.22,3.6-.81-.16v-3l.81-.13Zm1.26.23-.93-.15V2l.93-.16Z"/>
+      <path d="M9.13,1.8V5.7L12,6.31v-5Zm1.21,3.6-.81-.16v-3l.81-.13Zm1.26.23-.93-.15V2.05l.93-.17Z"/>
+      <path d="M0,7.13V11l2.89.61v-5Zm1.21,3.61-.81-.17v-3l.81-.14ZM2.48,11l-.93-.15V7.38l.93-.16Z"/>
+      <path d="M6.18,7.09V11l2.88.61v-5ZM7.39,10.7l-.81-.17v-3l.81-.14Zm1.26.22-.93-.15V7.34l.93-.16Z"/>
+      <path d="M12.35,7.14V11l2.89.61v-5Zm1.22,3.61-.81-.17v-3l.81-.14Zm1.26.22-.93-.15V7.39l.93-.16Z"/>
+      <path d="M2.87,12.56v3.9l2.89.62V12Zm1.22,3.61L3.28,16V13l.81-.14Zm1.26.23-.93-.15V12.81l.93-.16Z"/>
+      <path d="M9.05,12.61v3.9l2.89.61v-5Zm1.22,3.61-.81-.17v-3l.81-.14Zm1.26.22-.93-.15V12.86l.93-.16Z"/>
+    </g>
+  </symbol>
+</svg>
+<a class="skip" href="#scenario">Skip to the simulator</a>
+<main>
+  <h1>Where does an API request <span>get blocked on Azure?</span></h1>
+  <p class="intro">Follow an orders API request from the public edge to a container on Azure Kubernetes Service. Try changing the client configuration, AFD WAF rules or API-M policy to see which layer makes the decision and whether the container receives the request.</p>
+  <section class="lab" aria-label="API ingress simulator">
+    <div class="toolbar">
+      <div class="preset">
+        <label class="micro" for="scenario">Preset Scenario</label>
+        <select id="scenario">
+          <option value="healthy">Allowed request</option>
+          <option value="blocked">Source on WAF block list</option>
+          <option value="managed">Managed WAF rule blocks</option>
+          <option value="detect">WAF detection only</option>
+          <option value="trusted">WAF allows, API denies</option>
+          <option value="auth">Missing access token</option>
+          <option value="role">Caller lacks API role</option>
+          <option value="rate">Caller exceeds API rate limit</option>
+          <option value="notFound">Unknown API path · /api/basket</option>
+          <option value="custom" disabled>Custom settings</option>
+        </select>
+      </div>
+      <div class="actions">
+        <button id="run" class="run" type="button">Run request <span aria-hidden="true">→</span></button>
+        <button id="reset" type="button">Reset</button>
+      </div>
+    </div>
+    <noscript><p class="journey">Enable JavaScript to try the scenarios. The architecture notes explain each hop.</p></noscript>
+    <section class="journey" aria-labelledby="journey-title">
+      <h2 id="journey-title">Request journey</h2>
+      <div class="map" id="map">
+        <div class="path">
+          <section class="zone" aria-labelledby="zone-public">
+            <h3 class="micro" id="zone-public">Public internet</h3>
+            <div class="zone-nodes">
+              <div class="node" data-hop="client"><div class="node-label"><svg class="node-icon" aria-hidden="true" focusable="false"><use href="#icon-client"/></svg><span class="micro">Caller</span></div><strong>API client</strong><small id="request-target">GET /api/orders</small><span class="state">Sends request</span></div>
+            </div>
+          </section>
+          <section class="zone" aria-labelledby="zone-global">
+            <h3 class="micro" id="zone-global">Azure global edge</h3>
+            <div class="zone-nodes">
+              <div class="node" data-hop="edge"><div class="node-label"><svg class="node-icon" aria-hidden="true" focusable="false"><use href="#icon-front-door"/></svg><span class="micro">Global ingress</span></div><strong>Azure Front Door</strong><small>Premium · edge WAF</small><span class="state">Pending</span></div>
+            </div>
+          </section>
+          <section class="zone zone-regional" aria-labelledby="zone-uk">
+            <h3 class="micro" id="zone-uk">Azure region · UK South</h3>
+            <ol class="zone-nodes">
+              <li class="node" data-hop="regional"><div class="node-label"><svg class="node-icon" aria-hidden="true" focusable="false"><use href="#icon-appgw"/></svg><span class="micro">Regional ingress</span></div><strong>Application Gateway</strong><small>Private Link origin · routes /api</small><span class="state">Pending</span></li>
+              <li class="node" data-hop="api"><div class="node-label"><svg class="node-icon" aria-hidden="true" focusable="false"><use href="#icon-apim"/></svg><span class="micro">Private API gateway</span></div><strong>Azure API Management</strong><small>Internal VNet · inbound policies</small><span class="state">Pending</span></li>
+              <li class="node" data-hop="aks"><div class="node-label"><svg class="node-icon" aria-hidden="true" focusable="false"><use href="#icon-aks"/></svg><span class="micro">Private workload</span></div><strong>Azure Kubernetes Service</strong><small>Internal service → orders container</small><span class="state">Pending</span></li>
+            </ol>
+          </section>
+        </div>
+        <p class="return"><b>Response path</b> · <span id="return-path">Run a request to see the response path.</span></p>
+      </div>
+    </section>
+    <div class="grid">
+      <section class="controls" aria-labelledby="conditions-title">
+        <h2 id="conditions-title">Configuration</h2>
+        <form id="controls">
+          <fieldset>
+            <legend class="micro">Front Door</legend>
+            <div class="conditions">
+              <label>Client source <select name="source"><option value="public">Regular client</option><option value="denied">On IP block list</option><option value="trusted">Approved partner IP</option></select></label>
+              <label>Front Door Managed Client <select name="signature"><option value="clear">Below block threshold</option><option value="match">Meets block threshold</option></select></label>
+              <label>Front Door WAF mode <select name="mode"><option value="prevention">Prevention</option><option value="detection">Detection</option></select></label>
+              <label>Client request path <select name="path"><option value="/api/orders">/api/orders</option><option value="/api/basket">/api/basket</option></select></label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend class="micro">API-M</legend>
+            <div class="conditions">
+              <label>API-M client identity <select name="identity"><option value="valid">Valid token and role</option><option value="missing">Missing token</option><option value="wrongRole">Valid token, missing role</option></select></label>
+              <label>API-M per-client rate limit <select name="traffic"><option value="normal">Within limit</option><option value="burst">Over per-client limit</option></select></label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend class="micro">Front Door WAF rules</legend>
+            <label class="switch">Custom Block · listed client IPs <input name="block" type="checkbox" checked></label>
+            <label class="switch">Custom Allow · partner IP + orders path <input name="allow" type="checkbox"></label>
+            <label class="switch">Managed Default Rule Set <input name="managed" type="checkbox" checked></label>
+          </fieldset>
+          <fieldset>
+            <legend class="micro">API Management policies</legend>
+            <label class="switch">Validate Microsoft Entra token <input name="token" type="checkbox" checked></label>
+            <label class="switch">Require the orders-reader role <input name="role" type="checkbox" checked></label>
+            <label class="switch">Limit calls per authenticated client <input name="limit" type="checkbox" checked></label>
+          </fieldset>
+        </form>
+        <p class="hint">Choose a scenario or adjust the conditions, then select Run request. The lab uses preset inputs and counters.</p>
+      </section>
+      <section class="outcome" aria-labelledby="result-title">
+        <h2 id="result-title">Request outcome</h2>
+        <div id="result" class="result" role="status" aria-atomic="true">
+          <span class="status" id="status">—</span>
+          <div><h3 id="decision">Ready to run</h3><p id="reason">Select Run request to follow the request through the diagram.</p></div>
+        </div>
+        <details class="trace" open><summary>Request trace <span class="micro">· simulated</span></summary><ol id="trace"></ol></details>
+      </section>
+    </div>
+  </section>
+  <details class="notes">
+    <summary>Notes</summary>
+    <ul>
+      <li><strong>Global and regional ingress.</strong> Front Door Premium is the public endpoint. Its origin connection uses approved Private Link to an Application Gateway v2 frontend in UK South. Private APIM and AKS are deployed in the same region. Application Gateway routes <code>/api</code> to the private API Management gateway; the lab models routing only at this hop. A separately configured regional WAF could make its own decision. Align host names, TLS certificates, private DNS and health probes across the hops.</li>
+      <li><strong>Edge inspection.</strong> In this WAF policy, custom Block runs at priority 10 and custom Allow at 20, before the managed Default Rule Set. In Prevention mode a matching Allow ends inspection by this WAF, including managed rules. Give exceptions a narrow scope. Detection mode monitors and logs matches with diagnostics enabled and forwards the request. The managed input represents an anomaly score at or above the block threshold, with the anomaly action configured to Block.</li>
+      <li><strong>API access.</strong> This APIM example uses <code>validate-azure-ad-token</code> with its default 401 on failure. A separate role condition uses <code>return-response</code> configured for 403. <code>rate-limit-by-key</code> uses a verified client identity and returns 429 when its counter is over limit. The demo skips the per-client counter if token validation is off and rejects requests if a role is required without a verified identity.</li>
+      <li><strong>Private backend.</strong> This example uses Premium APIM in internal VNet mode and an internal Kubernetes Service with an Azure load balancer. The Service sends traffic to a pod running the orders container. Keep the private endpoints reachable only by the intended callers and authenticate the APIM-to-backend hop as appropriate.</li>
+      <li><strong>Locate the rejection.</strong> Both Front Door and APIM can return 403. Use Front Door WAF logs and request references to diagnose edge decisions, and APIM diagnostics or tracing for API policy decisions.</li>
+    </ul>
+  </details>
+  <details class="notes">
+    <summary>Useful links</summary>
+    <ul>
+      <li><a href="https://learn.microsoft.com/en-us/azure/web-application-firewall/afds/waf-front-door-custom-rules" target="_blank" rel="noopener">Front Door WAF custom rules and actions</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/web-application-firewall/afds/waf-front-door-drs" target="_blank" rel="noopener">Front Door managed rules and anomaly scoring</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/frontdoor/how-to-enable-private-link-application-gateway" target="_blank" rel="noopener">Connect Front Door Premium to Application Gateway using Private Link</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/api-management/api-management-howto-integrate-internal-vnet-appgateway" target="_blank" rel="noopener">Connect Application Gateway to internal API Management</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/aks/internal-lb" target="_blank" rel="noopener">Expose an AKS Service through an internal load balancer</a></li>
+    </ul>
+  </details>
+</main>
+<script>
+(() => {
+  const byId = id => document.getElementById(id);
+  const form = byId('controls');
+  const scenario = byId('scenario');
+  const map = byId('map');
+  const nodes = [...map.querySelectorAll('[data-hop]')];
+  const traceList = byId('trace');
+  const stepDelay = 600;
+  let nextStepTimer;
+  const presets = {
+    healthy: {},
+    blocked: {source: 'denied'},
+    managed: {signature: 'match'},
+    detect: {signature: 'match', mode: 'detection'},
+    trusted: {source: 'trusted', allow: true, signature: 'match', identity: 'wrongRole'},
+    auth: {identity: 'missing'},
+    role: {identity: 'wrongRole'},
+    rate: {traffic: 'burst'},
+    notFound: {path: '/api/basket'}
+  };
+  const hopNames = ['Client', 'Front Door', 'Application Gateway', 'APIM', 'AKS'];
+
+  function simulate(settings) {
+    const trace = [[0, 'Client', `Sent GET ${settings.path} to the public Front Door endpoint.`]];
+    const add = (hop, label, detail) => trace.push([hop, label, detail]);
+    const finish = (hop, status, title, reason, states) => ({hop, status, title, reason, states, trace});
+
+    // Priority 10 checks the IP block list. Priority 20 checks the partner and path.
+    const customBlock = settings.block && settings.source === 'denied';
+    const customAllow = settings.allow && settings.source === 'trusted' && settings.path === '/api/orders';
+    const managedBlock = settings.managed && settings.signature === 'match';
+    let edgeState = 'Forwarded';
+
+    if (settings.mode === 'detection') {
+      if (customBlock) add(1, 'WAF Custom Block', 'The source matched the block list. Detection mode does not enforce the block.');
+      if (customAllow) add(1, 'WAF Custom Allow', 'The partner rule matched. Detection mode does not enforce Allow.');
+      if (managedBlock) add(1, 'WAF managed rules', 'The input meets the anomaly threshold. Detection mode observes instead of blocking.');
+      if (!customBlock && !customAllow && !managedBlock) add(1, 'Front Door WAF', 'No configured rule triggered for these inputs.');
+      edgeState = customBlock || customAllow || managedBlock ? 'Detected · forwarded' : 'Forwarded';
+    } else if (customBlock) {
+      add(1, 'WAF Custom Block', 'Priority 10 matched the source block list. Front Door ended inspection and returned the default 403.');
+      return finish(1, 403, 'Blocked at Azure Front Door', 'The custom IP rule stopped the request at the edge. No regional or API policy ran.', ['Sent', 'Blocked by custom rule']);
+    } else if (customAllow) {
+      add(1, 'WAF Custom Allow', 'Priority 20 matched the approved partner and orders path. Front Door forwarded the request and skipped the remaining WAF rules.');
+      edgeState = 'Custom Allow';
+    } else if (managedBlock) {
+      add(1, 'WAF managed rules', 'The simulated anomaly score reached the configured blocking threshold. Front Door returned the default 403.');
+      return finish(1, 403, 'Blocked at Azure Front Door', 'The managed rule set stopped this request. Application Gateway, APIM and AKS never received it.', ['Sent', 'Blocked by managed rules']);
+    } else {
+      add(1, 'Front Door WAF', 'No terminal custom rule matched and the managed rules did not block the request.');
+    }
+
+    add(1, 'Front Door routing', 'Forwarded the request to the regional Application Gateway origin over Private Link.');
+    add(2, 'Application Gateway', 'The regional listener matched /api and forwarded the request to private API Management.');
+    const states = ['Sent', edgeState, 'Routed to APIM'];
+    const apiStop = (status, title, reason, state) => finish(3, status, title, reason, [...states, state]);
+
+    if (settings.path === '/api/basket') {
+      add(3, 'APIM operation matching', 'No published operation matches GET /api/basket. APIM reported OperationNotFound and returned 404.');
+      return apiStop(404, 'API operation not found', 'Application Gateway forwarded the request to APIM. APIM had no matching operation, so it returned 404 before calling AKS.', 'Rejected · unknown path');
+    }
+
+    if (settings.token && settings.identity === 'missing') {
+      add(3, 'APIM token validation', 'The inbound validate-azure-ad-token policy rejected the request without a bearer token.');
+      return apiStop(401, 'APIM requires an access token', 'The request passed the edge and regional ingress. APIM returned 401 before calling AKS.', 'Rejected · token');
+    }
+    add(3, 'APIM token validation', settings.token ? 'The Microsoft Entra token passed validation.' : 'Token validation is disabled in this run.');
+
+    if (settings.role && (!settings.token || settings.identity === 'wrongRole')) {
+      add(3, 'APIM role check', settings.token ? 'The validated token lacks the orders-reader role.' : 'This role policy requires a validated token. It cannot verify a role with token validation disabled.');
+      return apiStop(403, 'APIM denied access to orders', 'The example role policy returned 403 before the request reached AKS.', 'Rejected · role');
+    }
+    if (settings.role) add(3, 'APIM role check', 'The caller has the orders-reader role.');
+
+    if (settings.limit && settings.token && settings.traffic === 'burst') {
+      add(3, 'APIM rate limit', 'The counter for this authenticated client is over the configured request limit.');
+      return apiStop(429, 'APIM throttled the caller', 'The per-client policy returned 429 before calling AKS.', 'Rejected · rate limit');
+    }
+    if (settings.limit) add(3, 'APIM rate limit', settings.token ? 'The authenticated client is within its request limit.' : 'The example skips this identity-based limit without a verified client.');
+
+    add(4, 'AKS', 'The internal Kubernetes Service forwarded to an orders pod. The container returned 200.');
+    return finish(4, 200, 'The AKS container answered', 'The request cleared the active checks. APIM forwarded it to the private orders service.', [...states, 'Forwarded to AKS', 'Container answered']);
+  }
+
+  function setNode(index, state, text) {
+    nodes[index].dataset.state = state;
+    nodes[index].querySelector('.state').textContent = text;
+  }
+
+  function clearRun() {
+    clearTimeout(nextStepTimer);
+    traceList.replaceChildren();
+    byId('request-target').textContent = `GET ${form.elements.namedItem('path').value}`;
+    nodes.forEach((node, index) => {
+      node.classList.remove('pulse');
+      setNode(index, 'pending', index === 0 ? 'Ready' : 'Pending');
+    });
+    byId('return-path').textContent = 'Run a request to see the response path.';
+    delete byId('result').dataset.tone;
+    byId('status').textContent = '—';
+    byId('decision').textContent = 'Ready to run';
+    byId('reason').textContent = 'Select Run request to follow the request through the diagram.';
+  }
+
+  function showOutcome(result) {
+    for (let index = result.hop + 1; index < nodes.length; index++) {
+      setNode(index, 'skipped', 'Not reached');
+    }
+    byId('return-path').textContent = hopNames.slice(0, result.hop + 1).reverse().join(' → ');
+    byId('result').dataset.tone = result.status === 200 ? 'ok' : result.status === 429 ? 'warn' : 'error';
+    byId('status').textContent = result.status;
+    byId('decision').textContent = result.title;
+    byId('reason').textContent = result.reason;
+  }
+
+  function runRequest() {
+    clearRun();
+    // Commit the cleared styles so an immediate re-run restarts the client pulse.
+    void map.offsetWidth;
+    const result = simulate(Object.fromEntries(new FormData(form)));
+    byId('decision').textContent = 'Request in progress';
+    byId('reason').textContent = 'Follow each step in the request journey.';
+
+    function reveal(index) {
+      const [hop] = result.trace[index];
+      const rows = [];
+      do {
+        const [, label, text] = result.trace[index];
+        const row = document.createElement('li');
+        const heading = document.createElement('strong');
+        heading.textContent = label;
+        row.append(heading, ` · ${text}`);
+        rows.push(row);
+        index++;
+      } while (result.trace[index]?.[0] === hop);
+
+      const finished = index === result.trace.length;
+      const blocked = finished && result.status >= 400;
+      if (blocked) rows.at(-1).dataset.state = 'blocked';
+      traceList.append(...rows);
+      setNode(hop, blocked ? 'blocked' : 'reached', result.states[hop]);
+      nodes[hop].classList.add('pulse');
+
+      if (!finished) nextStepTimer = setTimeout(() => reveal(index), stepDelay);
+      else showOutcome(result);
+    }
+
+    reveal(0);
+  }
+
+  function loadPreset(name) {
+    form.reset();
+    for (const [key, value] of Object.entries(presets[name])) {
+      const field = form.elements.namedItem(key);
+      if (field.type === 'checkbox') field.checked = value;
+      else field.value = value;
+    }
+    scenario.value = name;
+    clearRun();
+  }
+
+  scenario.addEventListener('change', () => loadPreset(scenario.value));
+  form.addEventListener('submit', event => event.preventDefault());
+  form.addEventListener('change', () => {
+    scenario.value = 'custom';
+    clearRun();
+  });
+  byId('run').addEventListener('click', runRequest);
+  byId('reset').addEventListener('click', () => loadPreset('healthy'));
+  loadPreset('healthy');
+})();
+</script>
+</body>
+</html>
