@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="only light">
+  <title>Secure Enterprise RAG Architecture</title>
+  <style>
+    :root {
+      color-scheme: only light;
+      --paper: #fff;
+      --ink: #1e1b28;
+      --muted: #504b60;
+      --line: #d8d5e8;
+      --lane: #f8f7fc;
+      --node: #eeedf9;
+      --project: #f2f0fa;
+      --accent: #48477e;
+      --edge: #666499;
+      --secondary: #746c8d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 15px/1.5 "Avenir Next", Avenir, "Century Gothic", system-ui, sans-serif;
+    }
+    main {
+      max-width: 736px;
+      margin-inline: auto;
+      padding: clamp(12px, 3vw, 22px);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+    h1, h2, p, figure { margin: 0; }
+    h1 { font: 600 clamp(19px, 3.5vw, 23px)/1.12 Arial, sans-serif; letter-spacing: -.025em; }
+    .intro { color: var(--muted); margin-top: 6px; }
+    .filters {
+      display: grid;
+      grid-template-columns: .72fr 1.12fr 1.12fr 1fr;
+      gap: 6px;
+      margin: 14px 0 12px;
+    }
+    button {
+      min-height: 44px;
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: var(--paper);
+      font: 700 13px/1.2 "Avenir Next", Avenir, "Century Gothic", system-ui, sans-serif;
+    }
+    button:hover, button[aria-pressed="true"] { border-color: var(--accent); }
+    button[aria-pressed="true"] { background: var(--node); color: var(--accent); }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    svg { display: block; width: 100%; height: auto; }
+    svg text { fill: var(--ink); font-family: Arial, sans-serif; }
+    .lane { fill: var(--lane); stroke: var(--line); }
+    .project { fill: var(--project); stroke: var(--line); }
+    .lane-name { font-size: 15px; font-weight: 700; }
+    .node { cursor: pointer; }
+    .node rect { fill: var(--node); stroke: var(--edge); stroke-width: 1.15; }
+    .node .project { fill: var(--project); stroke: var(--line); }
+    .node:hover rect, .node:focus-visible rect, .node[aria-pressed="true"] rect {
+      stroke: var(--accent);
+      stroke-width: 2.6;
+    }
+    .node:focus-visible { outline: none; }
+    .node-label { font-size: 14px; font-weight: 700; }
+    .sub, .arrow-label { font-size: 11px; fill: var(--muted); }
+    .arrow { fill: none; stroke: var(--edge); stroke-width: 1.7; marker-end: url(#rag-arrow); }
+    .support { stroke: var(--secondary); stroke-dasharray: 5 4; marker-end: url(#rag-support); }
+    .flow.is-muted { opacity: .24; }
+    .node.is-muted rect { fill: var(--lane); stroke: var(--line); }
+    .node.is-muted text { fill: var(--muted); }
+    .node.is-muted:hover rect, .node.is-muted:focus-visible rect,
+    .node.is-muted[aria-pressed="true"] rect { stroke: var(--accent); }
+    .mobile-flow { display: none; }
+    .detail {
+      margin-top: 12px;
+      min-height: 94px;
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--accent);
+      border-radius: 7px;
+      padding: 10px 12px;
+      background: var(--lane);
+    }
+    .detail h2 { font-size: 17px; line-height: 1.22; }
+    .detail p { margin-top: 4px; font-size: 14px; }
+    .ownership {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 12px 0 0;
+      font-size: 13px;
+    }
+    dt { font-weight: 750; color: var(--accent); }
+    dd { margin: 2px 0 0; }
+    .caption { color: var(--muted); font-size: 12px; margin-top: 10px; }
+    @media (max-width: 595px) {
+      .filters { grid-template-columns: 1fr 1fr; }
+      .diagram { display: none; }
+      .mobile-flow { display: block; }
+      .mobile-flow h2 { color: var(--muted); font-size: 13px; margin-bottom: 5px; }
+      .mobile-flow ol { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+      .mobile-flow li + li::before {
+        display: block;
+        content: "↓";
+        color: var(--accent);
+        text-align: center;
+        line-height: 1.15;
+        margin-bottom: 4px;
+      }
+      .mobile-flow button { width: 100%; }
+      .mobile-flow [data-flow="overview"] { grid-template-columns: 1fr 1fr; }
+      .mobile-flow [data-flow="overview"] li + li::before { display: none; }
+      .mobile-flow [data-flow="monitoring"] li + li::before { content: none; }
+      .mobile-flow [hidden] { display: none; }
+    }
+  </style>
+</head>
+<body>
+<main id="rag-explorer">
+  <h1>Secure Enterprise RAG</h1>
+  <p class="intro">Trace the flows or select a component to see what it does.</p>
+
+  <div class="filters" role="group" aria-label="Architecture flow">
+    <button type="button" data-mode="overview" aria-pressed="true">Overview</button>
+    <button type="button" data-mode="ingestion" aria-pressed="false">Knowledge ingestion</button>
+    <button type="button" data-mode="answering" aria-pressed="false">Grounded answering</button>
+    <button type="button" data-mode="monitoring" aria-pressed="false">Monitoring</button>
+  </div>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 700 450" role="group" aria-label="Secure RAG architecture with selectable components">
+      <defs>
+        <symbol id="azure-search" viewBox="0 0 18 18"><defs><linearGradient id="b198f9ad-224e-4f37-99bb-f1c5a20d3916" x1="9" y1="0.36" x2="9" y2="18.31" gradientUnits="userSpaceOnUse"><stop offset="0.18" stop-color="#5ea0ef" /><stop offset="1" stop-color="#0078d4" /></linearGradient></defs><title>Icon-web-44</title><path d="M18,11.32a4.12,4.12,0,0,0-3.51-4,5.15,5.15,0,0,0-5.25-5,5.25,5.25,0,0,0-5,3.49A4.86,4.86,0,0,0,0,10.59a5,5,0,0,0,5.07,4.82l.44,0h8.21a.78.78,0,0,0,.22,0A4.13,4.13,0,0,0,18,11.32Z" fill="url(#b198f9ad-224e-4f37-99bb-f1c5a20d3916)" /><path d="M12.33,6.59a3.07,3.07,0,0,0-5.61.85,3.16,3.16,0,0,0,.33,2.27L4.71,12.08a.79.79,0,0,0,0,1.12.78.78,0,0,0,.56.23.76.76,0,0,0,.56-.23l2.33-2.36a3.14,3.14,0,0,0,.81.33,3.08,3.08,0,0,0,3.36-4.58Zm-.54,2.1A2.16,2.16,0,0,1,9.7,10.34a1.79,1.79,0,0,1-.51-.07,1.87,1.87,0,0,1-.7-.32,2.13,2.13,0,0,1-.56-.56,2.17,2.17,0,0,1-.31-1.73A2.14,2.14,0,0,1,9.7,6a2.31,2.31,0,0,1,.52.06,2.18,2.18,0,0,1,1.32,1A2.13,2.13,0,0,1,11.79,8.69Z" fill="#f2f2f2" /><ellipse cx="9.69" cy="8.18" rx="2.15" ry="2.16" fill="#83b9f9" /></symbol>
+        <symbol id="azure-project" viewBox="0 0 18 18"><defs><linearGradient id="uuid-ffdc8327-6dd4-457d-91e5-79ab6754f3f5" x1="-608.13" y1="-206.36" x2="-608.13" y2="-222.59" gradientTransform="translate(617.13 -205.76) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#b6b6e1" /><stop offset="1" stop-color="#7372d8" /></linearGradient></defs><path d="M17.46,3.36h-7.74c-.08,0-.16-.02-.23-.07l-2.21-1.47c-.07-.05-.15-.07-.23-.07H.54c-.11,0-.22.04-.3.12-.08.08-.12.18-.12.3v13.67c0,.05.01.11.03.16.02.05.05.1.09.14.04.04.08.07.14.09.05.02.1.03.16.03h16.91c.05,0,.11-.01.16-.03.05-.02.1-.05.14-.09.04-.04.07-.08.09-.14.02-.05.03-.11.03-.16V3.77c0-.11-.05-.21-.12-.29-.08-.08-.18-.12-.29-.12Z" fill="#4846df" /><path d="M5.6,2.54H1.91c-.09,0-.17.08-.17.17v.47c0,.09.08.17.17.17h3.7c.09,0,.17-.08.17-.17v-.47c0-.09-.08-.17-.17-.17Z" fill="#fff" /><path d="M17.46,3.34h-8.5c-.11,0-.22.04-.3.12l-1.36,1.37c-.08.08-.18.12-.3.12H.54c-.05,0-.11.01-.16.03-.05.02-.1.05-.14.09-.04.04-.07.08-.09.14-.02.05-.03.1-.03.16v10.44c0,.11.04.22.12.3.08.08.18.12.3.12h16.91c.11,0,.22-.04.3-.12.08-.08.12-.18.12-.3V3.75c0-.11-.04-.22-.12-.3-.08-.08-.18-.12-.3-.12h0Z" fill="url(#uuid-ffdc8327-6dd4-457d-91e5-79ab6754f3f5)" /><path d="M12.6,8.43h-.8s-.07.02-.1.02l-.04-.13c-.1-.3-.24-.73-.29-.89-.15-.46-.42-.99-.87-1.03v-.02h-1.57c-.6,0-.99.65-1.3,1.28-.37.78-2.15,5.49-2.21,5.67-.1.27-.09.48.03.64.11.16.3.24.58.24h2.62c1.26,0,1.82-1,1.82-2v-.58l.09.15h.03c.05.03.11.05.17.05h.89c.5,0,1.47-.43,1.47-1.41v-1.49c0-.31-.2-.51-.5-.51h0ZM11.16,8.48l.03.09c-.11.06-.21.13-.3.22-.02.01-.03.03-.04.05-.09.09-.16.19-.22.29-.02.04-.04.08-.06.12-.05.13-.09.27-.09.41v.34s-.02-.05-.02-.08v-1c0-.18,0-.36,0-.53,0-.05,0-.09,0-.14,0-.15.01-.29.02-.42,0-.06,0-.11.01-.16,0-.08.01-.15.02-.22,0-.05.01-.1.02-.15.01-.09.02-.17.04-.24,0-.02,0-.03,0-.04.08.11.19.31.28.58.05.16.19.58.29.88h0ZM9.93,12.22c0,.25-.06,1.48-1.29,1.48h-2.62c-.09,0-.13-.01-.15-.01h0s0-.06.03-.17c.07-.2,1.84-4.88,2.19-5.62.32-.66.59-.99.83-.99h1.16c-.07.3-.12.8-.14,1.57,0,.22,0,.39,0,.44v3.3ZM12.58,10.43c0,.72-.82.89-.95.89h-.63v-1.67c0-.08.02-.16.06-.23,0-.02.03-.04.04-.06.03-.05.07-.11.12-.16.02-.02.04-.03.06-.05.06-.05.12-.09.19-.12.02,0,.03-.02.05-.02.09-.04.19-.06.29-.06h.78v1.48Z" fill="#fff" /></symbol>
+        <symbol id="azure-model" viewBox="0 0 18 18"><defs><linearGradient id="uuid-eb2ac053-82fc-4742-ad37-91d1189337fa" x1="6.94" y1="242.38" x2=".48" y2="242.38" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f42fd" /><stop offset=".5" stop-color="#7274ff" /></linearGradient><linearGradient id="uuid-a366be6e-1577-45e5-a437-4c4014534894" x1="7.97" y1="252.24" x2="-.33" y2="245.1" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f42fd" /><stop offset="1" stop-color="#2c08ac" /></linearGradient><linearGradient id="uuid-7c513e23-ba04-4162-9ebc-b50a56a73c35" x1="6.82" y1="253.69" x2="1.2" y2="243.75" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7274ff" /><stop offset="1" stop-color="#2c08ac" stop-opacity="0" /></linearGradient><linearGradient id="uuid-4b94926e-5de0-4aef-aa26-8b28ce1d7aee" x1="7.78" y1="255.54" x2="1.85" y2="255.14" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#9189f7" /><stop offset="1" stop-color="#4135e9" /></linearGradient><linearGradient id="uuid-95f5126b-358c-4f27-8a6f-685c6729e8a4" x1="5.3" y1="257.98" x2="2.48" y2="252.99" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset=".5" stop-color="#7274ff" /><stop offset="1" stop-color="#4f42fd" /></linearGradient><linearGradient id="uuid-28b70d5b-a9de-432e-b761-203a2c8a2c49" x1="9.25" y1="257.93" x2="10.02" y2="247.65" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2c08ac" /><stop offset="1" stop-color="#4f42fd" /></linearGradient><linearGradient id="uuid-b3f148bf-47e0-4f8a-aa2b-54fa7840ec1d" x1="12.41" y1="247.68" x2="6.58" y2="257.57" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7274ff" /><stop offset="1" stop-color="#2c08ac" stop-opacity="0" /></linearGradient><linearGradient id="uuid-b2763f72-b6f7-4927-abd7-a860b729e6ab" x1="17.21" y1="246.54" x2="13.83" y2="251.14" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset=".5" stop-color="#7274ff" /><stop offset="1" stop-color="#4f42fd" /></linearGradient><linearGradient id="uuid-39ba0a1d-a39a-4d13-9a5c-aecf29eb6368" x1="8.59" y1="248.04" x2="10.92" y2="243.62" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f42fd" /><stop offset="1" stop-color="#2c08ac" /></linearGradient><linearGradient id="uuid-929ac68e-87fb-4c6f-bf9b-49b25460e2cf" x1="5.77" y1="248.12" x2="14.27" y2="243.39" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7274ff" /><stop offset="1" stop-color="#2c08ac" stop-opacity="0" /></linearGradient></defs><path d="M6.77,14.58c.1,0,.18.09.18.19-.09,1.78-1.51,2.99-3.09,2.99-.28,0-.56-.08-.79-.21-.24-.14-.44-.34-.58-.58l-1.37-2.38-.63-1.08c.39.67,1.1,1.08,1.88,1.08h4.42Z" fill="url(#uuid-eb2ac053-82fc-4742-ad37-91d1189337fa)" /><path d="M2.83,14.18c-.1.18.03.4.23.4h-.71c-.77,0-1.49-.41-1.88-1.08-.28-.49-.28-1.1,0-1.59L5.39,3.39c.05-.09.17-.11.25-.06.92.6,1.43,1.61,1.43,2.65,0,.54-.14,1.08-.43,1.58l-3.82,6.61h0Z" fill="url(#uuid-a366be6e-1577-45e5-a437-4c4014534894)" /><path d="M2.83,14.18c-.1.18.03.4.23.4h-.71c-.77,0-1.49-.41-1.88-1.08-.28-.49-.28-1.1,0-1.59L5.39,3.39c.05-.09.17-.11.25-.06.92.6,1.43,1.61,1.43,2.65,0,.54-.14,1.08-.43,1.58l-3.82,6.61h0Z" fill="url(#uuid-7c513e23-ba04-4162-9ebc-b50a56a73c35)" /><path d="M3.55,5.16c-.05.09-.16.11-.25.06-1.49-.97-1.83-2.8-1.04-4.17.14-.25.34-.44.58-.58.24-.14.51-.21.79-.21h4c-.77,0-1.49.41-1.88,1.08l-2.21,3.82Z" fill="url(#uuid-4b94926e-5de0-4aef-aa26-8b28ce1d7aee)" /><path d="M3.55,5.16c-.05.09-.16.11-.25.06-1.49-.97-1.83-2.8-1.04-4.17.14-.25.34-.44.58-.58.24-.14.51-.21.79-.21h4c-.77,0-1.49.41-1.88,1.08l-2.21,3.82Z" fill="url(#uuid-95f5126b-358c-4f27-8a6f-685c6729e8a4)" /><path d="M5.86,1.94c-.1-.18-.36-.18-.46,0l.35-.61c.39-.67,1.1-1.08,1.88-1.08.57,0,1.09.3,1.37.79l4.92,8.51c.05.09.02.2-.07.25-.98.49-2.11.43-3.01-.09-.47-.27-.87-.66-1.16-1.16L5.86,1.94h0Z" fill="url(#uuid-28b70d5b-a9de-432e-b761-203a2c8a2c49)" /><path d="M5.86,1.94c-.1-.18-.36-.18-.46,0l.35-.61c.39-.67,1.1-1.08,1.88-1.08.57,0,1.09.3,1.37.79l4.92,8.51c.05.09.02.2-.07.25-.98.49-2.11.43-3.01-.09-.47-.27-.87-.66-1.16-1.16L5.86,1.94h0Z" fill="url(#uuid-b3f148bf-47e0-4f8a-aa2b-54fa7840ec1d)" /><path d="M13.32,7.08c-.05-.09-.02-.2.07-.25,1.59-.81,3.34-.19,4.13,1.19.14.25.21.52.21.79s-.07.55-.21.79l-1.37,2.38-.63,1.08c.39-.67.39-1.5,0-2.17l-2.21-3.82h0Z" fill="url(#uuid-b2763f72-b6f7-4927-abd7-a860b729e6ab)" /><path d="M14.94,10.69c.2,0,.33-.22.23-.4l.35.61c.39.67.39,1.5,0,2.17-.28.49-.81.79-1.37.79H4.32c-.1,0-.18-.09-.18-.19.06-1.1.68-2.04,1.58-2.56.47-.27,1.01-.42,1.59-.42h7.63,0Z" fill="url(#uuid-39ba0a1d-a39a-4d13-9a5c-aecf29eb6368)" /><path d="M14.94,10.69c.2,0,.33-.22.23-.4l.35.61c.39.67.39,1.5,0,2.17-.28.49-.81.79-1.37.79H4.32c-.1,0-.18-.09-.18-.19.06-1.1.68-2.04,1.58-2.56.47-.27,1.01-.42,1.59-.42h7.63,0Z" fill="url(#uuid-929ac68e-87fb-4c6f-bf9b-49b25460e2cf)" /></symbol>
+        <symbol id="azure-identity" viewBox="0 0 18 18"><defs><linearGradient id="uuid-38c07977-ab9a-48eb-a668-cda3102bbd85" x1="7.697" y1="779.168" x2="14.082" y2="786.631" gradientTransform="translate(0 791.516) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#225086" /><stop offset="1" stop-color="#0055c5" /></linearGradient><linearGradient id="uuid-aed4a7bc-b380-4c34-b841-2d0f34d24f17" x1="6.364" y1="778.164" x2="6.364" y2="794.412" gradientTransform="translate(0 791.516) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#6df" /><stop offset="1" stop-color="#0294e4" /></linearGradient><linearGradient id="uuid-e2a7b7f2-bf16-4a76-ba27-7d149ab8a194" x1="9.001" y1="775.956" x2="9.001" y2="794.845" gradientTransform="translate(0 791.516) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#44dbf9" /><stop offset="1" stop-color="#cbf8ff" /></linearGradient><linearGradient id="uuid-c67f3364-071c-41f9-a175-d3de1f837e0a" x1="13.5" y1="774.721" x2="13.5" y2="790.782" gradientTransform="translate(0 791.516) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#041642" /><stop offset="1" stop-color="#041642" stop-opacity=".25" /></linearGradient></defs><g><path d="m17.647,9.906L10.147,1.445c-.599-.676-1.694-.676-2.294,0L.353,9.906c-.579.654-.428,1.641.323,2.111l7.499,4.688c.5.313,1.148.313,1.648,0l7.499-4.688c.751-.469.902-1.457.323-2.111h0Z" fill="url(#uuid-38c07977-ab9a-48eb-a668-cda3102bbd85)" stroke-width="0" /><path d="m10.148,1.445c-.599-.676-1.694-.676-2.294,0L.354,9.906c-.579.654-.428,1.641.323,2.111,0,0,2.776,1.735,3.126,1.954.388.242,1.033.511,1.715.511.621,0,1.197-.18,1.676-.487,0,0,0,0,.002-.001l1.804-1.128-4.364-2.728,4.474-5.047c.55-.627,1.377-1.026,2.302-1.026.472,0,.917.107,1.314.292l-2.579-2.909v-.002Z" fill="url(#uuid-aed4a7bc-b380-4c34-b841-2d0f34d24f17)" stroke-width="0" /><polygon points="4.636 10.138 4.688 10.17 9.001 12.866 9.001 12.866 13.365 10.138 13.366 10.138 13.365 10.138 9.001 5.214 4.636 10.138" fill="url(#uuid-e2a7b7f2-bf16-4a76-ba27-7d149ab8a194)" stroke-width="0" /><path d="m9.001,16.939c.287,0,.574-.078.824-.234l7.499-4.688c.751-.469.902-1.457.323-2.111L10.148,1.445c-.3-.338-.723-.507-1.147-.507v16.001Z" fill="url(#uuid-c67f3364-071c-41f9-a175-d3de1f837e0a)" fill-opacity=".5" isolation="isolate" opacity=".5" stroke-width="0" /></g><g><path id="uuid-f6648d86-048a-4f40-a6df-7ce120116a98" d="m16.512,10.831c.464-.458.468-1.206.01-1.67-.003-.003-.006-.006-.01-.01h0l-2.035-2.035c-.461-.461-1.208-.461-1.669,0h0l-2.035,2.035c-.456.467-.456,1.213,0,1.679l1.7,1.7c.061.063.094.147.092.234v3.155c-.003.108.041.213.122.285l.773.773c.095.104.255.112.359.017.006-.005.012-.011.017-.017l.743-.743h0l.448-.448c.058-.059.058-.154,0-.214l-.316-.315c-.067-.059-.074-.162-.014-.23.005-.005.009-.01.014-.014l.316-.316c.059-.063.059-.161,0-.224l-.316-.316c-.065-.054-.073-.15-.019-.215.006-.007.012-.013.019-.019l.316-.326c.058-.059.058-.154,0-.214l-.448-.448v-.163l1.934-1.944Zm-2.87-3.226c.371,0,.672.301.672.672s-.301.672-.672.672-.672-.301-.672-.672h0c0-.371.301-.672.672-.672Z" fill="#ffca00" stroke-width="0" /><path id="uuid-e1697bf4-8e5d-4d62-90c9-6569d79d4944" d="m13.133,16.042h0c.055.057.145.058.201.003.031-.03.047-.072.043-.115v-2.605c.002-.051-.021-.1-.061-.132h0c-.064-.045-.153-.03-.199.034-.02.029-.029.064-.025.098v2.555c-.02.058-.004.122.041.163Z" fill="#ff9300" isolation="isolate" opacity=".75" stroke-width="0" /><rect id="uuid-c930d4c2-9f41-48c7-adf7-acbd73af6fbf" x="12.014" y="9.834" width="3.348" height=".397" rx=".183" ry=".183" fill="#ff9300" isolation="isolate" opacity=".75" stroke-width="0" /><rect id="uuid-755aaa46-8b89-45f5-9da0-8a42782c5ddd" x="12.014" y="10.475" width="3.348" height=".397" rx=".183" ry=".183" fill="#ff9300" isolation="isolate" opacity=".75" stroke-width="0" /></g></symbol>
+        <marker id="rag-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0 0L7 3.5L0 7Z" fill="var(--edge)"/>
+        </marker>
+        <marker id="rag-support" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0 0L7 3.5L0 7Z" fill="var(--secondary)"/>
+        </marker>
+      </defs>
+      <rect class="lane" x="1" y="1" width="567" height="154" rx="10"/>
+      <rect class="lane" x="1" y="164" width="567" height="284" rx="10"/>
+      <rect class="lane" x="578" y="1" width="121" height="447" rx="10"/>
+      <text class="lane-name" x="14" y="25">Knowledge ingestion</text>
+      <text class="lane-name" x="14" y="189">Grounded answering</text>
+      <g class="node" data-node="project" data-modes="answering" role="button" tabindex="0" aria-pressed="false" aria-label="Foundry project">
+        <rect class="project" x="402" y="249" width="154" height="124" rx="9"/>
+        <use href="#azure-project" x="414" y="259" width="16" height="16" aria-hidden="true" pointer-events="none"/><text class="node-label" x="435" y="273">Foundry project</text>
+        <text class="sub" x="435" y="288">Workload workspace</text>
+      </g>
+
+      <g class="flow" data-modes="ingestion">
+        <path class="arrow" d="M142 77H218"/>
+        <text class="arrow-label" text-anchor="middle" x="180" y="53">Source<tspan x="180" dy="13">authorisation</tspan></text>
+        <path class="arrow" d="M368 77H409"/>
+        <path class="arrow support" d="M78 105V135H292V105"/>
+        <text class="arrow-label" x="124" y="128">Source updates / deletions</text>
+      </g>
+      <g class="flow" data-modes="answering">
+        <path class="arrow" d="M142 267H218"/>
+        <path class="arrow" d="M350 239L435 105"/>
+        <path class="arrow" d="M459 105L367 248"/>
+        <text class="arrow-label" text-anchor="end" x="391" y="171">Authorised<tspan x="391" dy="13">query</tspan></text>
+        <text class="arrow-label" x="439" y="184">Retrieved<tspan x="439" dy="13">passages</tspan></text>
+        <path class="arrow" d="M368 303H418"/>
+        <text class="arrow-label" text-anchor="middle" x="385" y="277">Prompt<tspan x="385" dy="12">+ context</tspan></text>
+        <path class="arrow" d="M418 342H368"/>
+        <text class="arrow-label" text-anchor="end" x="395" y="358">Generated<tspan x="395" dy="12">response</tspan></text>
+        <path class="arrow" d="M292 326V379"/>
+        <path class="arrow" d="M218 404H78V297"/>
+      </g>
+      <g class="flow" data-modes="monitoring">
+        <path class="arrow support" d="M292 50V23H638V157"/>
+        <path class="arrow support" d="M340 326V370H375V418H639V288"/>
+        <text class="arrow-label" x="483" y="409">Telemetry</text>
+      </g>
+      <use href="#azure-identity" x="14" y="418" width="14" height="14" aria-hidden="true" pointer-events="none"/><text class="arrow-label" x="33" y="430">Managed identity · Private connectivity</text>
+
+      <g class="node" data-node="documents" data-modes="ingestion" role="button" tabindex="0" aria-pressed="false" aria-label="Approved documents">
+        <rect x="14" y="50" width="128" height="55" rx="8"/>
+        <text class="node-label" text-anchor="middle" x="78" y="73">Approved<tspan x="78" dy="16">documents</tspan></text>
+      </g>
+      <g class="node" data-node="ingestion" data-modes="ingestion monitoring" role="button" tabindex="0" aria-pressed="false" aria-label="Controlled ingestion">
+        <rect x="218" y="50" width="150" height="55" rx="8"/>
+        <text class="node-label" text-anchor="middle" x="293" y="73">Controlled ingestion</text>
+        <text class="sub" text-anchor="middle" x="293" y="90">Chunk · Embed · Index</text>
+      </g>
+      <g class="node" data-node="search" data-modes="ingestion answering" role="button" tabindex="0" aria-pressed="false" aria-label="Azure AI Search">
+        <rect x="409" y="50" width="145" height="55" rx="8"/>
+        <use href="#azure-search" x="419" y="60" width="16" height="16" aria-hidden="true" pointer-events="none"/><text class="node-label" text-anchor="middle" x="490" y="73">Azure AI Search</text>
+        <text class="sub" text-anchor="middle" x="481" y="90">Search index</text>
+      </g>
+      <g class="node" data-node="user" data-modes="answering" role="button" tabindex="0" aria-pressed="false" aria-label="Authenticated user">
+        <rect x="14" y="239" width="128" height="58" rx="8"/>
+        <text class="node-label" text-anchor="middle" x="78" y="264">Authenticated<tspan x="78" dy="16">user</tspan></text>
+      </g>
+      <g class="node" data-node="application" data-modes="answering monitoring" role="button" tabindex="0" aria-pressed="false" aria-label="RAG application">
+        <rect x="218" y="239" width="150" height="87" rx="8"/>
+        <text class="node-label" text-anchor="middle" x="293" y="270">RAG application</text>
+        <text class="sub" text-anchor="middle" x="293" y="288">Retrieve passages<tspan x="293" dy="14">and assemble the prompt</tspan></text>
+      </g>
+      <g class="node" data-node="model" data-modes="answering" role="button" tabindex="0" aria-pressed="false" aria-label="Model deployment">
+        <rect x="418" y="297" width="126" height="59" rx="8"/>
+        <use href="#azure-model" x="428" y="317" width="18" height="18" aria-hidden="true" pointer-events="none"/><text class="node-label" text-anchor="middle" x="481" y="320">Model<tspan x="481" dy="16">deployment</tspan></text>
+      </g>
+      <g class="node" data-node="answer" data-modes="answering" role="button" tabindex="0" aria-pressed="false" aria-label="Answer and source references">
+        <rect x="218" y="379" width="150" height="51" rx="8"/>
+        <text class="node-label" text-anchor="middle" x="293" y="401">Answer + source<tspan x="293" dy="16">references</tspan></text>
+      </g>
+      <g class="node" data-node="monitoring" data-modes="monitoring" role="button" tabindex="0" aria-pressed="false" aria-label="Evaluation and monitoring">
+        <rect x="586" y="157" width="105" height="131" rx="8"/>
+        <text class="node-label" text-anchor="middle" x="639" y="182">Evaluation &amp;<tspan x="639" dy="16">monitoring</tspan></text>
+        <text class="sub" text-anchor="middle" x="639" y="221">Quality<tspan x="639" dy="13">Groundedness</tspan><tspan x="639" dy="13">Freshness</tspan><tspan x="639" dy="13">Latency · Cost</tspan></text>
+      </g>
+    </svg>
+  </figure>
+
+  <section class="mobile-flow" aria-labelledby="rag-mobile-heading">
+    <h2 id="rag-mobile-heading">Components</h2>
+    <div class="mobile-lists"></div>
+  </section>
+
+  <section class="detail" aria-live="polite" aria-atomic="true">
+    <h2>Architecture overview</h2>
+    <p>Approved documents feed the search index. The application retrieves passages the user is authorised to see, sends context to the model and returns an answer with source references.</p>
+  </section>
+  <dl class="ownership">
+    <div><dt>Platform provides</dt><dd>Private connectivity, managed identity, logging and templates.</dd></div>
+    <div><dt>Product team decides</dt><dd>Source authorisation, retrieval design and acceptance criteria.</dd></div>
+  </dl>
+  <p class="caption">Conceptual architecture</p>
+  <noscript><p>Enable JavaScript to select flows and explore the components.</p></noscript>
+</main>
+<script>
+  (() => {
+    const modes = {
+      overview: {
+        title: "Architecture overview",
+        summary: "Approved documents feed the search index. The application retrieves passages the user is authorised to see, sends context to the model and returns an answer with source references.",
+        label: "Components",
+        steps: ["documents", "ingestion", "search", "user", "application", "project", "model", "answer", "monitoring"]
+      },
+      ingestion: {
+        title: "Knowledge ingestion",
+        summary: "Authorise the sources, then chunk, embed and index their contents. Process source updates and deletions so the index reflects what is available to retrieve.",
+        label: "Ingestion sequence",
+        steps: ["documents", "ingestion", "search"]
+      },
+      answering: {
+        title: "Grounded answering",
+        summary: "An authenticated user asks a question. The application queries Search within the user’s access scope, adds the returned passages to the model prompt and delivers an answer with source references.",
+        label: "Answering sequence",
+        steps: ["user", "application", "search", "application", "model", "answer"]
+      },
+      monitoring: {
+        title: "Evaluation and monitoring",
+        summary: "Use ingestion and application telemetry to track freshness, latency, failures and cost. Evaluate retrieval relevance, groundedness and answer quality against representative questions.",
+        label: "Monitored components",
+        steps: ["ingestion", "application", "monitoring"]
+      }
+    };
+    const components = {
+      documents: ["Approved documents", "The product team chooses which sources may be indexed and defines who can see their contents. For example, an HR assistant might index published policies with access rules preserved."],
+      ingestion: ["Controlled ingestion", "Split approved documents into passages, create embeddings and write them to the index with access metadata. Apply source updates and deletions through the same pipeline."],
+      search: ["Azure AI Search", "The search index serves relevant passages. The retrieval design must enforce the user’s access scope before passages enter the prompt."],
+      user: ["Authenticated user", "The application establishes who is asking the question so it can apply the appropriate document access rules during retrieval."],
+      application: ["RAG application", "Query Search within the user’s access scope, then send the prompt and retrieved context to the model. Use the platform’s managed identity and private connectivity patterns for service access."],
+      project: ["Foundry project", "The workload’s Foundry workspace holds its model deployment and project configuration, such as connections and role assignments."],
+      model: ["Model deployment", "The Foundry project contains the model deployment for this workload. The application sends a prompt with retrieved passages and receives a generated response."],
+      answer: ["Answer and source references", "Return the answer with references the user is authorised to open. The product team defines fallback behaviour for cases where retrieval yields insufficient evidence."],
+      monitoring: ["Evaluation and monitoring", "Track source freshness, latency, cost and failures. Evaluate retrieval relevance, groundedness and answer quality using thresholds the product team owns."]
+    };
+
+    const root = document.getElementById("rag-explorer");
+    const filters = [...root.querySelectorAll("[data-mode]")];
+    const diagramItems = [...root.querySelectorAll("[data-modes]")];
+    const diagramNodes = [...root.querySelectorAll("svg [data-node]")];
+    const mobileHeading = root.querySelector(".mobile-flow h2");
+    const mobileLists = root.querySelector(".mobile-lists");
+    const title = root.querySelector(".detail h2");
+    const description = root.querySelector(".detail p");
+    let mode = "overview";
+    let selectedNode = "";
+
+    function render() {
+      const flow = modes[mode];
+      filters.forEach(button => button.setAttribute("aria-pressed", button.dataset.mode === mode));
+      diagramItems.forEach(item => {
+        item.classList.toggle("is-muted", mode !== "overview" && !item.dataset.modes.split(" ").includes(mode));
+      });
+      mobileHeading.textContent = flow.label;
+      for (const list of mobileLists.children) list.hidden = list.dataset.flow !== mode;
+      for (const node of root.querySelectorAll("[data-node]")) {
+        node.setAttribute("aria-pressed", node.dataset.node === selectedNode);
+      }
+      const [heading, text] = selectedNode ? components[selectedNode] : [flow.title, flow.summary];
+      title.textContent = heading;
+      description.textContent = text;
+    }
+
+    for (const [key, flow] of Object.entries(modes)) {
+      const list = document.createElement("ol");
+      list.dataset.flow = key;
+      for (const step of flow.steps) {
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.node = step;
+        button.textContent = components[step][0];
+        item.append(button);
+        list.append(item);
+      }
+      mobileLists.append(list);
+    }
+
+    root.addEventListener("click", event => {
+      const control = event.target.closest("[data-mode], [data-node]");
+      if (!control) return;
+      if (control.dataset.mode) {
+        mode = control.dataset.mode;
+        selectedNode = "";
+      } else {
+        selectedNode = control.dataset.node;
+      }
+      render();
+    });
+    for (const node of diagramNodes) {
+      node.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        selectedNode = node.dataset.node;
+        render();
+      });
+    }
+    render();
+  })();
+</script>
+</body>
+</html>

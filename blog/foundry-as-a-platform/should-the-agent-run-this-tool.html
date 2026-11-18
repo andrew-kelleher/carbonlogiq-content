@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Should the Agent Run This Tool?</title>
+  <style>
+    body { margin: 0; background: #fff; }
+    #agent-tool-check {
+      --ink: #1e1b28;
+      --muted: #504b60;
+      --accent: #48477e;
+      --lavender: #eeedf9;
+      --line: #d8d5e8;
+      --blocked: #913b32;
+      box-sizing: border-box;
+      max-width: 736px;
+      margin-inline: auto;
+      padding: clamp(14px, 3.5vw, 25px);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--ink);
+      background: #fff;
+      font: 16px/1.48 "Avenir Next", Avenir, "Century Gothic", system-ui, sans-serif;
+    }
+    #agent-tool-check * { box-sizing: border-box; }
+    #agent-tool-check h2, #agent-tool-check h3, #agent-tool-check p { margin: 0; }
+    #agent-tool-check h2 {
+      font: 600 clamp(19px, 3.5vw, 23px)/1.15 Arial, sans-serif;
+      letter-spacing: -.025em;
+    }
+    #agent-tool-check .intro { margin-top: 7px; color: var(--muted); }
+    #agent-tool-check button {
+      appearance: none;
+      cursor: pointer;
+      font: 650 14px/1.25 "Avenir Next", Avenir, "Century Gothic", system-ui, sans-serif;
+      color: inherit;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      min-height: 44px;
+      padding: 7px 12px;
+    }
+    #agent-tool-check button:hover { border-color: var(--accent); }
+    #agent-tool-check :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    #agent-tool-check .choices {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 17px;
+    }
+    #agent-tool-check .choices button { padding-inline: 5px; }
+    #agent-tool-check [aria-pressed="true"] {
+      background: var(--lavender);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    #agent-tool-check .request {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    #agent-tool-check .availability {
+      display: inline-flex;
+      min-height: 44px;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    #agent-tool-check input { width: 17px; height: 17px; margin: 0; accent-color: var(--accent); }
+    #agent-tool-check .checks {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      margin: 3px 0 0;
+      padding: 0;
+    }
+    #agent-tool-check .checks li {
+      background: var(--lavender);
+      border-radius: 7px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 4px;
+    }
+    #agent-tool-check .check-name { font-size: 13px; font-weight: 700; }
+    #agent-tool-check .check-state { color: var(--muted); font-size: 12px; }
+    #agent-tool-check [data-state="blocked"] { color: var(--blocked); font-weight: 700; }
+    #agent-tool-check [data-state="passed"], #agent-tool-check [data-state="waiting"] {
+      color: var(--accent);
+      font-weight: 700;
+    }
+    #agent-tool-check .result {
+      margin-top: 14px;
+      border-top: 1px solid var(--line);
+      padding-top: 11px;
+    }
+    #agent-tool-check h3 { font-size: 18px; line-height: 1.28; }
+    #agent-tool-check .result p { margin-top: 4px; font-size: 14px; }
+    #agent-tool-check .actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+    #agent-tool-check .primary { color: #fff; background: var(--accent); border-color: var(--accent); }
+    #agent-tool-check .primary:hover { background: #393866; }
+    #agent-tool-check [hidden] { display: none; }
+    @media (max-width: 410px) {
+      #agent-tool-check .checks li { padding-inline: 6px; }
+      #agent-tool-check .choices button, #agent-tool-check .check-name { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <section id="agent-tool-check" aria-labelledby="atc-title">
+    <h2 id="atc-title">Should the Agent Run This Tool?</h2>
+    <p class="intro">Choose a simulated request and see which checks let the tool run.</p>
+
+    <div class="choices" role="group" aria-label="Example requests">
+      <button type="button" aria-pressed="true">Read a ticket</button>
+      <button type="button" aria-pressed="false">Create a ticket</button>
+      <button type="button" aria-pressed="false">Update a CMDB record</button>
+    </div>
+    <p class="request">“What’s the status of ticket INC-1042?”</p>
+    <label class="availability">
+      <input type="checkbox" checked>
+      Tool enabled for this agent
+    </label>
+
+    <div aria-live="polite" aria-atomic="true">
+      <ol class="checks" aria-label="Execution checks">
+        <li><span class="check-name">Tool availability</span><span class="check-state">Not checked</span></li>
+        <li><span class="check-name">Agent’s identity permissions</span><span class="check-state">Not checked</span></li>
+        <li><span class="check-name">Human approval</span><span class="check-state">Not checked</span></li>
+      </ol>
+      <div class="result">
+        <h3>Ready to check</h3>
+        <p>The agent proposes a ticket lookup.</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="primary check">Check tool call</button>
+      <button type="button" class="primary approve" hidden>Approve and run</button>
+      <button type="button" class="deny" hidden>Deny</button>
+    </div>
+    <noscript><p>Enable JavaScript to try the simulation.</p></noscript>
+  </section>
+  <script>
+    (() => {
+      const examples = [
+        {
+          request: "What’s the status of ticket INC-1042?",
+          proposal: "The agent proposes a ticket lookup.",
+          hasPermission: true,
+          needsApproval: false,
+          outcome: "The agent reads ticket INC-1042 and can report its status."
+        },
+        {
+          request: "Open a ticket for the VPN outage.",
+          proposal: "The agent proposes creating a service desk ticket.",
+          hasPermission: true,
+          needsApproval: true,
+          outcome: "The agent creates a service desk ticket for the VPN outage."
+        },
+        {
+          request: "Mark VPN-GW-01 as retired in the configuration management database.",
+          proposal: "The agent proposes changing the status of a CMDB record.",
+          hasPermission: false,
+          needsApproval: true
+        }
+      ];
+
+      const root = document.getElementById("agent-tool-check");
+      const choices = [...root.querySelectorAll(".choices button")];
+      const request = root.querySelector(".request");
+      const availability = root.querySelector("input");
+      const [toolState, identityState, approvalState] = root.querySelectorAll(".check-state");
+      const heading = root.querySelector(".result h3");
+      const explanation = root.querySelector(".result p");
+      const check = root.querySelector(".check");
+      const approve = root.querySelector(".approve");
+      const deny = root.querySelector(".deny");
+      let example = examples[0];
+
+      function mark(element, label, state = "") {
+        element.textContent = label;
+        element.dataset.state = state;
+      }
+
+      function showResult(title, detail) {
+        heading.textContent = title;
+        explanation.textContent = detail;
+      }
+
+      function showApprovalButtons(awaitingApproval) {
+        check.hidden = awaitingApproval;
+        approve.hidden = !awaitingApproval;
+        deny.hidden = !awaitingApproval;
+      }
+
+      function resetChecks() {
+        mark(toolState, "Not checked");
+        mark(identityState, "Not checked");
+        mark(approvalState, "Not checked");
+        showApprovalButtons(false);
+      }
+
+      function resetExample() {
+        resetChecks();
+        request.textContent = "“" + example.request + "”";
+        check.textContent = "Check tool call";
+        showResult("Ready to check", example.proposal);
+      }
+
+      choices.forEach((choice, index) => {
+        choice.addEventListener("click", () => {
+          example = examples[index];
+          choices.forEach(button => button.setAttribute("aria-pressed", button === choice));
+          availability.checked = true;
+          resetExample();
+        });
+      });
+      availability.addEventListener("change", resetExample);
+
+      check.addEventListener("click", () => {
+        resetChecks();
+        check.textContent = "Check again";
+
+        if (!availability.checked) {
+          mark(toolState, "Unavailable", "blocked");
+          showResult("Tool call blocked", "This tool is outside the agent’s allowed tool list. The other checks are skipped.");
+          return;
+        }
+        mark(toolState, "Available", "passed");
+
+        if (!example.hasPermission) {
+          mark(identityState, "Permission denied", "blocked");
+          showResult("Tool call blocked", "The agent’s identity lacks permission to write to the CMDB. The call stops before a reviewer is asked.");
+          return;
+        }
+        mark(identityState, "Permitted", "passed");
+
+        if (example.needsApproval) {
+          mark(approvalState, "Awaiting decision", "waiting");
+          showResult("Waiting for approval", "Act as the authorised reviewer. The application holds the ticket request until you decide.");
+          showApprovalButtons(true);
+          approve.focus();
+          return;
+        }
+        mark(approvalState, "Not required");
+        showResult("Tool call runs", example.outcome);
+      });
+
+      approve.addEventListener("click", () => {
+        mark(approvalState, "Approved", "passed");
+        showResult("Tool call runs", example.outcome);
+        showApprovalButtons(false);
+        check.focus();
+      });
+      deny.addEventListener("click", () => {
+        mark(approvalState, "Denied", "blocked");
+        showResult("Tool call blocked", "The reviewer denied the request. The application skips execution.");
+        showApprovalButtons(false);
+        check.focus();
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="only light">
+  <title>Governed Model API Architecture</title>
+  <style>
+    :root {
+      color-scheme: only light;
+      --paper: #fff;
+      --ink: #1e1b28;
+      --muted: #504b60;
+      --line: #d8d5e8;
+      --lane: #f8f7fc;
+      --node: #eeedf9;
+      --project: #f2f0fa;
+      --accent: #48477e;
+      --edge: #666499;
+      --secondary: #746c8d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 15px/1.5 "Avenir Next", Avenir, "Century Gothic", system-ui, sans-serif;
+    }
+    main {
+      max-width: 736px;
+      margin-inline: auto;
+      padding: clamp(12px, 3vw, 22px);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+    h1, h2, p, figure { margin: 0; }
+    h1 { font: 600 clamp(19px, 3.5vw, 23px)/1.12 Arial, sans-serif; letter-spacing: -.025em; }
+    .intro { color: var(--muted); margin-top: 6px; }
+    .filters {
+      display: grid;
+      grid-template-columns: .72fr 1.12fr 1.12fr 1fr;
+      gap: 6px;
+      margin: 14px 0 12px;
+    }
+    button {
+      min-height: 44px;
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: var(--paper);
+      font: 700 13px/1.2 "Avenir Next", Avenir, "Century Gothic", system-ui, sans-serif;
+    }
+    button:hover, button[aria-pressed="true"] { border-color: var(--accent); }
+    button[aria-pressed="true"] { background: var(--node); color: var(--accent); }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    svg { display: block; width: 100%; height: auto; }
+    svg text { fill: var(--ink); font-family: Arial, sans-serif; }
+    .lane { fill: var(--lane); stroke: var(--line); }
+    .project { fill: var(--project); stroke: var(--line); }
+    .lane-name { font-size: 15px; font-weight: 700; }
+    .node { cursor: pointer; }
+    .node rect { fill: var(--node); stroke: var(--edge); stroke-width: 1.15; }
+    .node .project { fill: var(--project); stroke: var(--line); }
+    .node:hover rect, .node:focus-visible rect, .node[aria-pressed="true"] rect {
+      stroke: var(--accent);
+      stroke-width: 2.6;
+    }
+    .node:focus-visible { outline: none; }
+    .node-label { font-size: 14px; font-weight: 700; }
+    .sub, .arrow-label { font-size: 11px; fill: var(--muted); }
+    .arrow { fill: none; stroke: var(--edge); stroke-width: 1.7; marker-end: url(#api-arrow); }
+    .support { stroke: var(--secondary); stroke-dasharray: 5 4; marker-end: url(#api-telemetry); }
+    .flow.is-muted { opacity: .24; }
+    .node.is-muted rect { fill: var(--lane); stroke: var(--line); }
+    .node.is-muted text { fill: var(--muted); }
+    .node.is-muted:hover rect, .node.is-muted:focus-visible rect,
+    .node.is-muted[aria-pressed="true"] rect { stroke: var(--accent); }
+    .mobile-flow { display: none; }
+    .detail {
+      margin-top: 12px;
+      min-height: 94px;
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--accent);
+      border-radius: 7px;
+      padding: 10px 12px;
+      background: var(--lane);
+    }
+    .detail h2 { font-size: 17px; line-height: 1.22; }
+    .detail p { margin-top: 4px; font-size: 14px; }
+    .ownership {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 12px 0 0;
+      font-size: 13px;
+    }
+    dt { font-weight: 750; color: var(--accent); }
+    dd { margin: 2px 0 0; }
+    .caption { color: var(--muted); font-size: 12px; margin-top: 10px; }
+    @media (max-width: 595px) {
+      .filters { grid-template-columns: 1fr 1fr; }
+      .diagram { display: none; }
+      .mobile-flow { display: block; }
+      .mobile-flow h2 { color: var(--muted); font-size: 13px; margin-bottom: 5px; }
+      .mobile-flow ol { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+      .mobile-flow li + li::before {
+        display: block;
+        content: "↓";
+        color: var(--accent);
+        text-align: center;
+        line-height: 1.15;
+        margin-bottom: 4px;
+      }
+      .mobile-flow button { width: 100%; }
+      .mobile-flow [data-flow="overview"] { grid-template-columns: 1fr 1fr; }
+      .mobile-flow [data-flow="overview"] li + li::before { display: none; }
+      .mobile-flow [data-flow="monitoring"] li + li::before { content: none; }
+      .mobile-flow [hidden] { display: none; }
+    }
+  
+    .filters { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .node-label { font-size: 12px; }
+    .node .sub { font-size: 10px; }
+    .routing { stroke-dasharray: 6 4; }
+    .plain-edge { marker-end: none; }
+    .support { stroke: #9a90b7; stroke-dasharray: 3 4; }
+    .icon { fill: none; stroke: var(--accent); stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+    .gateway-option { fill: var(--paper); stroke: var(--line); }
+    .node .gateway-option { fill: var(--paper); stroke: var(--line); }
+    @media (max-width: 595px) {
+      .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .mobile-flow ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .mobile-flow li + li::before { display: none; }
+    }
+</style>
+</head>
+<body>
+<main id="model-api-explorer">
+  <h1>Governed Model API</h1>
+  <p class="intro">Trace a request or select a component to see what it does.</p>
+
+  <div class="filters" role="group" aria-label="Architecture flow">
+    <button type="button" data-mode="overview" aria-pressed="true">Overview</button>
+<button type="button" data-mode="request" aria-pressed="false">Main request</button>
+<button type="button" data-mode="routing" aria-pressed="false">Routing / fallback</button>
+<button type="button" data-mode="telemetry" aria-pressed="false">Monitoring &amp; cost</button>
+  </div>
+
+  <figure class="diagram">
+    
+    <svg viewBox="0 0 700 491" role="group" aria-label="Governed Model API architecture with selectable components">
+      <defs>
+        <marker id="api-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="var(--edge)"/></marker>
+        <marker id="api-telemetry" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#9a90b7"/></marker>
+        <path id="api-app" d="M1 2h16v13H1zM1 5h16M6 8l-2 2 2 2m6-4 2 2-2 2m-2-5-2 6"/>
+        <symbol id="azure-foundry-models" viewBox="0 0 18 18"><defs><linearGradient id="uuid-eb2ac053-82fc-4742-ad37-91d1189337fa" x1="6.94" y1="242.38" x2=".48" y2="242.38" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f42fd" /><stop offset=".5" stop-color="#7274ff" /></linearGradient><linearGradient id="uuid-a366be6e-1577-45e5-a437-4c4014534894" x1="7.97" y1="252.24" x2="-.33" y2="245.1" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f42fd" /><stop offset="1" stop-color="#2c08ac" /></linearGradient><linearGradient id="uuid-7c513e23-ba04-4162-9ebc-b50a56a73c35" x1="6.82" y1="253.69" x2="1.2" y2="243.75" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7274ff" /><stop offset="1" stop-color="#2c08ac" stop-opacity="0" /></linearGradient><linearGradient id="uuid-4b94926e-5de0-4aef-aa26-8b28ce1d7aee" x1="7.78" y1="255.54" x2="1.85" y2="255.14" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#9189f7" /><stop offset="1" stop-color="#4135e9" /></linearGradient><linearGradient id="uuid-95f5126b-358c-4f27-8a6f-685c6729e8a4" x1="5.3" y1="257.98" x2="2.48" y2="252.99" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset=".5" stop-color="#7274ff" /><stop offset="1" stop-color="#4f42fd" /></linearGradient><linearGradient id="uuid-28b70d5b-a9de-432e-b761-203a2c8a2c49" x1="9.25" y1="257.93" x2="10.02" y2="247.65" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2c08ac" /><stop offset="1" stop-color="#4f42fd" /></linearGradient><linearGradient id="uuid-b3f148bf-47e0-4f8a-aa2b-54fa7840ec1d" x1="12.41" y1="247.68" x2="6.58" y2="257.57" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7274ff" /><stop offset="1" stop-color="#2c08ac" stop-opacity="0" /></linearGradient><linearGradient id="uuid-b2763f72-b6f7-4927-abd7-a860b729e6ab" x1="17.21" y1="246.54" x2="13.83" y2="251.14" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset=".5" stop-color="#7274ff" /><stop offset="1" stop-color="#4f42fd" /></linearGradient><linearGradient id="uuid-39ba0a1d-a39a-4d13-9a5c-aecf29eb6368" x1="8.59" y1="248.04" x2="10.92" y2="243.62" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f42fd" /><stop offset="1" stop-color="#2c08ac" /></linearGradient><linearGradient id="uuid-929ac68e-87fb-4c6f-bf9b-49b25460e2cf" x1="5.77" y1="248.12" x2="14.27" y2="243.39" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7274ff" /><stop offset="1" stop-color="#2c08ac" stop-opacity="0" /></linearGradient></defs><path d="M6.77,14.58c.1,0,.18.09.18.19-.09,1.78-1.51,2.99-3.09,2.99-.28,0-.56-.08-.79-.21-.24-.14-.44-.34-.58-.58l-1.37-2.38-.63-1.08c.39.67,1.1,1.08,1.88,1.08h4.42Z" fill="url(#uuid-eb2ac053-82fc-4742-ad37-91d1189337fa)" /><path d="M2.83,14.18c-.1.18.03.4.23.4h-.71c-.77,0-1.49-.41-1.88-1.08-.28-.49-.28-1.1,0-1.59L5.39,3.39c.05-.09.17-.11.25-.06.92.6,1.43,1.61,1.43,2.65,0,.54-.14,1.08-.43,1.58l-3.82,6.61h0Z" fill="url(#uuid-a366be6e-1577-45e5-a437-4c4014534894)" /><path d="M2.83,14.18c-.1.18.03.4.23.4h-.71c-.77,0-1.49-.41-1.88-1.08-.28-.49-.28-1.1,0-1.59L5.39,3.39c.05-.09.17-.11.25-.06.92.6,1.43,1.61,1.43,2.65,0,.54-.14,1.08-.43,1.58l-3.82,6.61h0Z" fill="url(#uuid-7c513e23-ba04-4162-9ebc-b50a56a73c35)" /><path d="M3.55,5.16c-.05.09-.16.11-.25.06-1.49-.97-1.83-2.8-1.04-4.17.14-.25.34-.44.58-.58.24-.14.51-.21.79-.21h4c-.77,0-1.49.41-1.88,1.08l-2.21,3.82Z" fill="url(#uuid-4b94926e-5de0-4aef-aa26-8b28ce1d7aee)" /><path d="M3.55,5.16c-.05.09-.16.11-.25.06-1.49-.97-1.83-2.8-1.04-4.17.14-.25.34-.44.58-.58.24-.14.51-.21.79-.21h4c-.77,0-1.49.41-1.88,1.08l-2.21,3.82Z" fill="url(#uuid-95f5126b-358c-4f27-8a6f-685c6729e8a4)" /><path d="M5.86,1.94c-.1-.18-.36-.18-.46,0l.35-.61c.39-.67,1.1-1.08,1.88-1.08.57,0,1.09.3,1.37.79l4.92,8.51c.05.09.02.2-.07.25-.98.49-2.11.43-3.01-.09-.47-.27-.87-.66-1.16-1.16L5.86,1.94h0Z" fill="url(#uuid-28b70d5b-a9de-432e-b761-203a2c8a2c49)" /><path d="M5.86,1.94c-.1-.18-.36-.18-.46,0l.35-.61c.39-.67,1.1-1.08,1.88-1.08.57,0,1.09.3,1.37.79l4.92,8.51c.05.09.02.2-.07.25-.98.49-2.11.43-3.01-.09-.47-.27-.87-.66-1.16-1.16L5.86,1.94h0Z" fill="url(#uuid-b3f148bf-47e0-4f8a-aa2b-54fa7840ec1d)" /><path d="M13.32,7.08c-.05-.09-.02-.2.07-.25,1.59-.81,3.34-.19,4.13,1.19.14.25.21.52.21.79s-.07.55-.21.79l-1.37,2.38-.63,1.08c.39-.67.39-1.5,0-2.17l-2.21-3.82h0Z" fill="url(#uuid-b2763f72-b6f7-4927-abd7-a860b729e6ab)" /><path d="M14.94,10.69c.2,0,.33-.22.23-.4l.35.61c.39.67.39,1.5,0,2.17-.28.49-.81.79-1.37.79H4.32c-.1,0-.18-.09-.18-.19.06-1.1.68-2.04,1.58-2.56.47-.27,1.01-.42,1.59-.42h7.63,0Z" fill="url(#uuid-39ba0a1d-a39a-4d13-9a5c-aecf29eb6368)" /><path d="M14.94,10.69c.2,0,.33-.22.23-.4l.35.61c.39.67.39,1.5,0,2.17-.28.49-.81.79-1.37.79H4.32c-.1,0-.18-.09-.18-.19.06-1.1.68-2.04,1.58-2.56.47-.27,1.01-.42,1.59-.42h7.63,0Z" fill="url(#uuid-929ac68e-87fb-4c6f-bf9b-49b25460e2cf)" /></symbol>
+        <symbol id="azure-ai-gateway" viewBox="0 0 18 18"><defs><clipPath id="uuid-562db301-56bd-45b0-915c-82a4f2277e80"><rect x=".38" y=".38" width="17.25" height="17.25" fill="none" /></clipPath><linearGradient id="uuid-2859d71d-31ae-4abe-9fcc-0bafc567faf0" x1="-611.4" y1="-205.23" x2="-611.4" y2="-224.06" gradientTransform="translate(617.13 -205.76) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3bd5ff" /><stop offset=".37" stop-color="#0fafff" /><stop offset=".71" stop-color="#9c6cfe" /><stop offset="1" stop-color="#bb45ea" /></linearGradient><linearGradient id="uuid-6097306d-a96e-4b55-af58-8c93ec52e898" x1="-604.85" y1="-207.94" x2="-604.85" y2="-224.5" gradientTransform="translate(617.13 -205.76) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0078d4" /><stop offset=".32" stop-color="#0094f0" /><stop offset=".65" stop-color="#6864f6" /><stop offset="1" stop-color="#a931d8" /></linearGradient><radialGradient id="uuid-a5b5da7b-9645-4aae-aa96-a7cb16b4141c" cx="114.65" cy="-115.18" fx="114.65" fy="-115.18" r=".96" gradientTransform="translate(9.87 -881.72) rotate(45) scale(5.47 -5.47)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#29c3ff" /><stop offset=".23" stop-color="#4894fe" /><stop offset=".5" stop-color="#6864f6" /><stop offset=".89" stop-color="#a931d8" /></radialGradient></defs><g clip-path="url(#uuid-562db301-56bd-45b0-915c-82a4f2277e80)"><g><path d="M11.02,1.15c-.55-.5-1.26-.78-2.02-.78-.81,0-1.56.31-2.13.88L1.26,6.87c-.57.57-.88,1.32-.88,2.13s.31,1.56.88,2.13l2.77,2.77,1.2,1.2c.83.83,2.12.94,3.07.33.05-.03.08-.08.08-.13,0-.05-.01-.11-.05-.15l-5.55-5.55c-.16-.16-.25-.38-.25-.6s.09-.44.25-.6l3.8-3.8,1.82-1.82.39-.38c.59-.59,1.35-.9,2.12-.93.08,0,.14-.05.17-.12.02-.07,0-.15-.05-.19Z" fill="url(#uuid-2859d71d-31ae-4abe-9fcc-0bafc567faf0)" /><path d="M16.74,6.87l-3.97-3.97c-.83-.83-2.12-.94-3.07-.33-.05.03-.08.08-.08.13,0,.05.01.11.05.15l5.55,5.55c.16.16.25.38.25.6s-.09.44-.25.6l-3.8,3.79-1.82,1.82-.39.38c-.59.59-1.34.89-2.11.93h-.01c-.07,0-.14.05-.16.12-.03.07,0,.15.05.19.55.5,1.27.78,2.02.78.8,0,1.56-.31,2.13-.88l5.62-5.62c.57-.57.88-1.32.88-2.13s-.31-1.56-.88-2.13Z" fill="url(#uuid-6097306d-a96e-4b55-af58-8c93ec52e898)" /><path d="M9,11.59c1.43,0,2.59-1.16,2.59-2.59s-1.16-2.59-2.59-2.59-2.59,1.16-2.59,2.59,1.16,2.59,2.59,2.59Z" fill="url(#uuid-a5b5da7b-9645-4aae-aa96-a7cb16b4141c)" /></g></g><rect width="18" height="18" fill="none" /></symbol>
+        <symbol id="azure-api-management" viewBox="0 0 18 18"><defs><linearGradient id="bf8a9583-aae9-48ff-87d8-fb8f44e7d6bd" x1="9" y1="16.82" x2="9" y2="1.18" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#198ab3" /><stop offset="0.09" stop-color="#1f9dc4" /><stop offset="0.24" stop-color="#28b5d9" /><stop offset="0.4" stop-color="#2dc6e9" /><stop offset="0.57" stop-color="#31d1f2" /><stop offset="0.78" stop-color="#32d4f5" /></linearGradient><linearGradient id="f9b1bb8c-728e-4abf-bce5-6c11ac170c5b" x1="8.36" y1="11.35" x2="8.36" y2="14.46" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#c69aeb" /><stop offset="1" stop-color="#6f4bb2" /></linearGradient></defs><title>Icon-web-42</title><path d="M14.18,5.89A4.85,4.85,0,0,0,9.23,1.18,5,5,0,0,0,4.48,4.47,4.61,4.61,0,0,0,.5,9,4.67,4.67,0,0,0,5.29,13.5a3,3,0,0,0,.42,0h1.2a1.47,1.47,0,0,1-.11-.56v0A1.51,1.51,0,0,1,7,12.21H5.6l-.31,0A3.41,3.41,0,0,1,1.77,9,3.33,3.33,0,0,1,4.68,5.73l.76-.12.25-.73A3.73,3.73,0,0,1,9.23,2.45,3.6,3.6,0,0,1,12.91,5.9V7L14,7.15a2.59,2.59,0,0,1,2.26,2.49,2.63,2.63,0,0,1-2.62,2.54h-.15l-.08,0h-1A3.92,3.92,0,0,0,8.54,9a.64.64,0,1,0,0,1.27,2.65,2.65,0,0,1,0,5.29.64.64,0,1,0,0,1.27,3.92,3.92,0,0,0,3.87-3.34h1.05a.64.64,0,0,0,.2,0A3.91,3.91,0,0,0,17.5,9.64,3.86,3.86,0,0,0,14.18,5.89Z" fill="url(#bf8a9583-aae9-48ff-87d8-fb8f44e7d6bd)" /><rect x="6.8" y="11.35" width="3.12" height="3.12" rx="1.54" fill="url(#f9b1bb8c-728e-4abf-bce5-6c11ac170c5b)" /></symbol>
+        <symbol id="azure-app-insights" viewBox="0 0 18 18"><defs><radialGradient id="a7a1c431-6c6d-4a8f-9a69-8da437e5b0c5" cx="9" cy="7.35" r="6.42" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#b77af4" /><stop offset="0.21" stop-color="#b378f2" /><stop offset="0.43" stop-color="#a672ed" /><stop offset="0.65" stop-color="#9267e4" /><stop offset="0.88" stop-color="#7559d8" /><stop offset="1" stop-color="#624fd0" /></radialGradient><linearGradient id="ec0c4f0d-5c8e-4882-96a1-89d61808eb49" x1="9.02" y1="3.91" x2="9.08" y2="11.49" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f2f2f2" /><stop offset="0.23" stop-color="#f1f1f2" stop-opacity="0.99" /><stop offset="0.37" stop-color="#ededf1" stop-opacity="0.95" /><stop offset="0.48" stop-color="#e7e5f0" stop-opacity="0.89" /><stop offset="0.58" stop-color="#dedbee" stop-opacity="0.81" /><stop offset="0.67" stop-color="#d3ceeb" stop-opacity="0.7" /><stop offset="0.76" stop-color="#c4bee8" stop-opacity="0.57" /><stop offset="0.84" stop-color="#b4abe5" stop-opacity="0.41" /><stop offset="0.92" stop-color="#a095e1" stop-opacity="0.22" /><stop offset="0.99" stop-color="#8b7ddc" stop-opacity="0.02" /><stop offset="1" stop-color="#897bdc" stop-opacity="0" /></linearGradient></defs><title>Icon-manage-310</title><path d="M10.23,17.39l.81-.87V14.2H7v2.32l.81.87A.32.32,0,0,0,8,17.5h2A.32.32,0,0,0,10.23,17.39Z" fill="#cecece" /><path d="M9,.5A5.89,5.89,0,0,0,3.09,7.07c.27,2.47,2.62,3.62,3.29,6.75a.49.49,0,0,0,.47.38h4.3a.49.49,0,0,0,.47-.38c.67-3.13,3-4.28,3.29-6.75A5.89,5.89,0,0,0,9,.5ZM7,14.2" fill="url(#a7a1c431-6c6d-4a8f-9a69-8da437e5b0c5)" /><path d="M11.46,3.79a1.4,1.4,0,0,0-1.35,1.44V6H8V5.23A1.41,1.41,0,0,0,6.59,3.79,1.4,1.4,0,0,0,5.24,5.23,1.41,1.41,0,0,0,6.59,6.68h.64v6a.36.36,0,0,0,.72,0v-6h2.16v6a.36.36,0,1,0,.72,0v-6h.63a1.4,1.4,0,0,0,1.35-1.45A1.4,1.4,0,0,0,11.46,3.79ZM7.23,6H6.55a.74.74,0,0,1-.68-.77.74.74,0,0,1,.68-.77.74.74,0,0,1,.68.77Zm4.28,0h-.68V5.19a.68.68,0,1,1,1.35,0A.73.73,0,0,1,11.51,6Z" fill="url(#ec0c4f0d-5c8e-4882-96a1-89d61808eb49)" /><polygon points="6.96 15.8 11.04 15.01 11.04 14.56 6.96 15.36 6.96 15.8" fill="#999" /><polygon points="11.04 16.11 11.04 15.67 6.96 16.48 6.96 16.52 7.27 16.86 11.04 16.11" fill="#999" /></symbol>
+        <symbol id="azure-log-analytics" viewBox="0 0 18 18"><defs><linearGradient id="a997e203-1d7d-4cb9-b131-5dc44e029b46" x1="5.23" y1="17.45" x2="5.23" y2="8.09" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1988d9" /><stop offset="0.9" stop-color="#54aef0" /></linearGradient><linearGradient id="e122e9d8-aee5-4f1a-a60e-b1eae355daa5" x1="11.5" y1="12.45" x2="11.5" y2="0.55" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#198ab3" /><stop offset="0.01" stop-color="#198bb4" /><stop offset="0.44" stop-color="#27b2d7" /><stop offset="0.79" stop-color="#2fcbed" /><stop offset="1" stop-color="#32d4f5" /></linearGradient></defs><title>Icon-manage-307</title><path d="M5.59,13.13H9.91v4.32H5.59ZM1.15,17.45H4.87V13.13H.55v3.72A.6.6,0,0,0,1.15,17.45Zm-.6-5H4.87V8.09H.55Z" fill="url(#a997e203-1d7d-4cb9-b131-5dc44e029b46)" /><path d="M11.5.55a5.89,5.89,0,0,1,5.95,6,5.89,5.89,0,0,1-5.95,5.95H5.55V6.5A5.89,5.89,0,0,1,11.5.55Z" fill-rule="evenodd" fill="url(#e122e9d8-aee5-4f1a-a60e-b1eae355daa5)" /><rect x="7.59" y="5.65" width="1.36" height="4.08" fill="#fff" /><rect x="10.31" y="7.01" width="1.36" height="2.72" fill="#fff" /><rect x="13.03" y="4.29" width="1.36" height="5.44" fill="#fff" /></symbol>
+      </defs>
+      <rect class="lane" x="1" y="1" width="148" height="352" rx="10"/>
+      <rect class="lane" x="179" y="1" width="520" height="352" rx="10"/>
+      <text class="lane-name" x="75" y="26" text-anchor="middle">Application-owned</text>
+      <text class="lane-name" x="439" y="26" text-anchor="middle">Platform-managed</text>
+      <rect class="project" x="535" y="48" width="153" height="200" rx="8"/>
+      <text class="node-label" x="611" y="67" text-anchor="middle">Approved Foundry models</text>
+<g class="flow" data-modes="request"><path class="arrow plain-edge" d="M138 84H160V208H138"/><path class="arrow " d="M138 146H194"/><path class="arrow " d="M407 146H535"/><text class="arrow-label" x="471" y="121" text-anchor="middle">Private backend</text><text class="arrow-label" x="471" y="134" text-anchor="middle">connectivity</text><text class="arrow-label" x="471" y="164" text-anchor="middle">Where required</text></g><g class="flow" data-modes="routing"><path class="arrow routing" d="M319 234V298H390"/><path class="arrow routing" d="M567 298H605V248"/></g><g class="flow" data-modes="telemetry"><path class="arrow support" d="M220 234V372H280V390"/><path class="arrow support" d="M665 248V372H590V390"/><text class="arrow-label" x="294" y="368" text-anchor="middle">Usage / error telemetry</text><text class="arrow-label" x="597" y="368" text-anchor="middle">Usage / error telemetry</text></g><g class="node" data-node="appA" data-modes="request" role="button" tabindex="0" aria-pressed="false" aria-label="Application A"><rect x="12" y="58" width="126" height="52" rx="8"/><use href="#api-app" class="icon" x="21" y="70"/><text class="node-label" x="85.0" y="82" text-anchor="middle">Application A</text><text class="sub" x="75.0" y="101" text-anchor="middle">Approved model requests</text></g>
+<g class="node" data-node="appB" data-modes="request" role="button" tabindex="0" aria-pressed="false" aria-label="Application B"><rect x="12" y="120" width="126" height="52" rx="8"/><use href="#api-app" class="icon" x="21" y="132"/><text class="node-label" x="85.0" y="144" text-anchor="middle">Application B</text><text class="sub" x="75.0" y="163" text-anchor="middle">Approved model requests</text></g>
+<g class="node" data-node="appC" data-modes="request" role="button" tabindex="0" aria-pressed="false" aria-label="Application C"><rect x="12" y="182" width="126" height="52" rx="8"/><use href="#api-app" class="icon" x="21" y="194"/><text class="node-label" x="85.0" y="206" text-anchor="middle">Application C</text><text class="sub" x="75.0" y="225" text-anchor="middle">Approved model requests</text></g>
+<g class="node" data-node="team" data-modes="request routing" role="button" tabindex="0" aria-pressed="false" aria-label="Team responsibilities"><rect x="12" y="263" width="126" height="78" rx="8"/><text class="node-label" x="75.0" y="290" text-anchor="middle">Team responsibilities</text><text class="arrow-label" x="75" y="308" text-anchor="middle">Model requirements · Data</text><text class="arrow-label" x="75" y="325" text-anchor="middle">Fallback behaviour</text></g>
+<g class="node" data-node="gateway" data-modes="request routing telemetry" role="button" tabindex="0" aria-pressed="false" aria-label="Shared AI gateway"><rect x="194" y="58" width="213" height="176" rx="8"/><text class="node-label" x="300.5" y="85" text-anchor="middle">Shared AI gateway</text><path class="gateway-option" d="M205 96h191v59H205z"/><use href="#azure-ai-gateway" x="209" y="101" width="15" height="15" aria-hidden="true" pointer-events="none"/><text class="arrow-label" x="309" y="112" text-anchor="middle">Foundry integrated AI Gateway</text><text class="arrow-label" x="300" y="127" text-anchor="middle">or</text><use href="#azure-api-management" x="209" y="134" width="15" height="15" aria-hidden="true" pointer-events="none"/><text class="arrow-label" x="309" y="141" text-anchor="middle">Separately managed</text><text class="arrow-label" x="309" y="152" text-anchor="middle">Azure API Management</text><text class="arrow-label" x="300" y="173" text-anchor="middle">Entra authentication</text><text class="arrow-label" x="300" y="193" text-anchor="middle">Consumer quotas · Token limits</text><text class="arrow-label" x="300" y="213" text-anchor="middle">Usage attribution</text></g>
+<g class="node" data-node="modelA" data-modes="request routing telemetry" role="button" tabindex="0" aria-pressed="false" aria-label="Deployment A"><rect x="547" y="78" width="129" height="48" rx="8"/><use href="#azure-foundry-models" x="556" y="90" width="18" height="18" aria-hidden="true" pointer-events="none"/><text class="node-label" x="621.5" y="102" text-anchor="middle">Deployment A</text><text class="sub" x="611.5" y="121" text-anchor="middle">Approved model / capacity</text></g>
+<g class="node" data-node="modelB" data-modes="request routing telemetry" role="button" tabindex="0" aria-pressed="false" aria-label="Deployment B"><rect x="547" y="134" width="129" height="48" rx="8"/><use href="#azure-foundry-models" x="556" y="146" width="18" height="18" aria-hidden="true" pointer-events="none"/><text class="node-label" x="621.5" y="158" text-anchor="middle">Deployment B</text><text class="sub" x="611.5" y="177" text-anchor="middle">Approved model / capacity</text></g>
+<g class="node" data-node="modelC" data-modes="request routing telemetry" role="button" tabindex="0" aria-pressed="false" aria-label="Deployment C"><rect x="547" y="190" width="129" height="48" rx="8"/><use href="#azure-foundry-models" x="556" y="202" width="18" height="18" aria-hidden="true" pointer-events="none"/><text class="node-label" x="621.5" y="214" text-anchor="middle">Deployment C</text><text class="sub" x="611.5" y="233" text-anchor="middle">Approved model / capacity</text></g>
+<g class="node" data-node="routing" data-modes="routing" role="button" tabindex="0" aria-pressed="false" aria-label="Routing / fallback"><rect x="390" y="272" width="177" height="55" rx="8"/><text class="node-label" x="478.5" y="296" text-anchor="middle">Routing / fallback</text><text class="sub" x="478.5" y="315" text-anchor="middle">Optional · Approved alternatives</text></g>
+<g class="node" data-node="monitoring" data-modes="telemetry" role="button" tabindex="0" aria-pressed="false" aria-label="Monitoring &amp; cost visibility"><rect x="194" y="390" width="494" height="69" rx="8"/><text class="node-label" x="441.0" y="414" text-anchor="middle">Monitoring &amp; cost visibility</text><use href="#azure-app-insights" x="328" y="420" width="16" height="16" aria-hidden="true" pointer-events="none"/><text class="sub" x="350" y="433">Application Insights</text><use href="#azure-log-analytics" x="456" y="420" width="16" height="16" aria-hidden="true" pointer-events="none"/><text class="sub" x="478" y="433">Log Analytics</text><text class="arrow-label" x="441" y="447" text-anchor="middle">Consumer usage · Errors · Latency · Model and token spend</text></g>
+      <path class="arrow" d="M16 477H38"/>
+      <text class="arrow-label" x="45" y="481">Main request</text>
+      <path class="arrow routing" d="M175 477H197"/>
+      <text class="arrow-label" x="204" y="481">Optional routing</text>
+      <path class="arrow support" d="M355 477H377"/>
+      <text class="arrow-label" x="384" y="481">Telemetry</text>
+    </svg>
+
+  </figure>
+
+  <section class="mobile-flow" aria-labelledby="api-mobile-heading">
+    <h2 id="api-mobile-heading">Components</h2>
+    <div class="mobile-lists"></div>
+  </section>
+
+  <section class="detail" aria-live="polite" aria-atomic="true">
+    <h2>Architecture overview</h2>
+    <p>Applications use a shared gateway to access approved Foundry deployments. The platform manages gateway policies, model capacity, monitoring and cost controls.</p>
+  </section>
+  <dl class="ownership">
+    <div><dt>Platform provides</dt><dd>Gateway policies, model capacity, monitoring and cost controls.</dd></div>
+    <div><dt>Product team decides</dt><dd>Model requirements, permitted data and fallback behaviour.</dd></div>
+  </dl>
+  <p class="caption">Conceptual architecture</p>
+  <noscript><p>Enable JavaScript to select flows and explore the components.</p></noscript>
+</main>
+<script>
+  (() => {
+    const modes = {
+  "overview": {
+    "title": "Architecture overview",
+    "summary": "Applications use a shared gateway to access approved Foundry deployments. The platform manages gateway policies, model capacity, monitoring and cost controls.",
+    "label": "Components",
+    "steps": [
+      "appA",
+      "appB",
+      "appC",
+      "team",
+      "gateway",
+      "modelA",
+      "modelB",
+      "modelC",
+      "routing",
+      "monitoring"
+    ]
+  },
+  "request": {
+    "title": "Main request flow",
+    "summary": "The gateway authenticates requests with Entra, applies consumer limits and directs requests to an approved deployment. Use private backend connectivity where the chosen topology requires it.",
+    "label": "Request flow components",
+    "steps": [
+      "appA",
+      "appB",
+      "appC",
+      "team",
+      "gateway",
+      "modelA",
+      "modelB",
+      "modelC"
+    ]
+  },
+  "routing": {
+    "title": "Optional routing and fallback",
+    "summary": "Where justified by workload evidence, the platform can route requests to approved alternatives. The application team decides which fallback behaviour it can accept.",
+    "label": "Routing components",
+    "steps": [
+      "team",
+      "gateway",
+      "routing",
+      "modelA",
+      "modelB",
+      "modelC"
+    ]
+  },
+  "telemetry": {
+    "title": "Monitoring and cost visibility",
+    "summary": "Usage and error telemetry from the gateway and deployments supports tracking by consumer, along with latency and model or token spend.",
+    "label": "Telemetry sources and destination",
+    "steps": [
+      "gateway",
+      "modelA",
+      "modelB",
+      "modelC",
+      "monitoring"
+    ]
+  }
+};
+    const components = {
+  "appA": [
+    "Application A",
+    "The application team defines its model requirements, what data the application may send, and how it should behave if the model is unavailable. It uses the shared endpoint to request an approved model."
+  ],
+  "appB": [
+    "Application B",
+    "The application team defines its model requirements, what data the application may send, and how it should behave if the model is unavailable. It uses the shared endpoint to request an approved model."
+  ],
+  "appC": [
+    "Application C",
+    "The application team defines its model requirements, what data the application may send, and how it should behave if the model is unavailable. It uses the shared endpoint to request an approved model."
+  ],
+  "team": [
+    "Team responsibilities",
+    "The application team owns model quality and latency requirements, permitted data and fallback behaviour."
+  ],
+  "gateway": [
+    "Shared AI gateway",
+    "Choose Foundry’s integrated AI Gateway or separately managed Azure API Management according to networking and governance needs. Apply Entra authentication, token limits and quotas, and attribute usage. If multiple applications share a Foundry project, application-level limits and attribution may require additional gateway policies."
+  ],
+  "modelA": [
+    "Deployment A",
+    "A Foundry deployment offers an approved model with allocated capacity. Model, region and deployment choices follow the platform catalogue and the workload’s quality, latency and data requirements."
+  ],
+  "modelB": [
+    "Deployment B",
+    "A Foundry deployment offers an approved model with allocated capacity. Model, region and deployment choices follow the platform catalogue and the workload’s quality, latency and data requirements."
+  ],
+  "modelC": [
+    "Deployment C",
+    "A Foundry deployment offers an approved model with allocated capacity. Model, region and deployment choices follow the platform catalogue and the workload’s quality, latency and data requirements."
+  ],
+  "routing": [
+    "Routing / fallback",
+    "An optional route selects among approved alternatives. Add routing or fallback when evaluation and operational evidence show that it helps, and check that alternatives meet the workload’s requirements."
+  ],
+  "monitoring": [
+    "Monitoring & cost visibility",
+    "Use Application Insights and Log Analytics to track usage by consumer, errors, latency, and model or token spend. Use the evidence to tune quotas and capacity."
+  ]
+};
+
+    const root = document.getElementById("model-api-explorer");
+    const filters = [...root.querySelectorAll("[data-mode]")];
+    const diagramItems = [...root.querySelectorAll("[data-modes]")];
+    const diagramNodes = [...root.querySelectorAll("svg [data-node]")];
+    const mobileHeading = root.querySelector(".mobile-flow h2");
+    const mobileLists = root.querySelector(".mobile-lists");
+    const title = root.querySelector(".detail h2");
+    const description = root.querySelector(".detail p");
+    let mode = "overview";
+    let selectedNode = "";
+
+    function render() {
+      const flow = modes[mode];
+      filters.forEach(button => button.setAttribute("aria-pressed", button.dataset.mode === mode));
+      diagramItems.forEach(item => {
+        item.classList.toggle("is-muted", mode !== "overview" && !item.dataset.modes.split(" ").includes(mode));
+      });
+      mobileHeading.textContent = flow.label;
+      for (const list of mobileLists.children) list.hidden = list.dataset.flow !== mode;
+      for (const node of root.querySelectorAll("[data-node]")) {
+        node.setAttribute("aria-pressed", node.dataset.node === selectedNode);
+      }
+      const [heading, text] = selectedNode ? components[selectedNode] : [flow.title, flow.summary];
+      title.textContent = heading;
+      description.textContent = text;
+    }
+
+    for (const [key, flow] of Object.entries(modes)) {
+      const list = document.createElement("ol");
+      list.dataset.flow = key;
+      for (const step of flow.steps) {
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.node = step;
+        button.textContent = components[step][0];
+        item.append(button);
+        list.append(item);
+      }
+      mobileLists.append(list);
+    }
+
+    root.addEventListener("click", event => {
+      const control = event.target.closest("[data-mode], [data-node]");
+      if (!control) return;
+      if (control.dataset.mode) {
+        mode = control.dataset.mode;
+        selectedNode = "";
+      } else {
+        selectedNode = control.dataset.node;
+      }
+      render();
+    });
+    for (const node of diagramNodes) {
+      node.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        selectedNode = node.dataset.node;
+        render();
+      });
+    }
+    render();
+  })();
+</script>
+</body>
+</html>

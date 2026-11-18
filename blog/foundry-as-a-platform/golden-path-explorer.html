@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Golden Path Explorer</title>
+  <style>
+    body { margin: 0; background: #fff; }
+    #golden-path-explorer {
+      --ink: #1e1b28;
+      --muted: #504b60;
+      --accent: #48477e;
+      --lavender: #eeedf9;
+      --line: #d8d5e8;
+      box-sizing: border-box;
+      max-width: 736px;
+      margin-inline: auto;
+      padding: clamp(14px, 3.5vw, 25px);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--ink);
+      background: white;
+      font: 16px/1.48 "Avenir Next", Avenir, "Century Gothic", system-ui, sans-serif;
+    }
+    #golden-path-explorer * { box-sizing: border-box; }
+    #golden-path-explorer h2, #golden-path-explorer h3,
+    #golden-path-explorer p { margin: 0; }
+    #golden-path-explorer h2 {
+      font: 600 clamp(19px, 3.5vw, 23px)/1.15 Arial, sans-serif;
+      letter-spacing: -.025em;
+    }
+    #golden-path-explorer .intro { margin-top: 7px; color: var(--muted); }
+    #golden-path-explorer button {
+      appearance: none;
+      cursor: pointer;
+      font: inherit;
+      color: inherit;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      min-height: 44px;
+    }
+    #golden-path-explorer button:hover { border-color: var(--accent); }
+    #golden-path-explorer button:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    #golden-path-explorer .workloads {
+      display: grid;
+      grid-template-columns: 1fr 1.25fr 1fr;
+      gap: 6px;
+      margin-top: 17px;
+    }
+    #golden-path-explorer .workloads button {
+      font-size: 14px;
+      font-weight: 650;
+      line-height: 1.2;
+      padding: 7px 5px;
+    }
+    #golden-path-explorer .workloads [aria-pressed="true"] {
+      background: var(--lavender);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    #golden-path-explorer .scenario {
+      margin: 9px 0 15px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    #golden-path-explorer .lifecycle {
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      gap: 6px;
+    }
+    #golden-path-explorer .phase {
+      background: var(--lavender);
+      border-radius: 7px;
+      padding: 6px;
+    }
+    #golden-path-explorer .phase-name {
+      display: block;
+      padding: 0 4px 4px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    #golden-path-explorer .steps {
+      display: grid;
+      grid-auto-columns: minmax(0, 1fr);
+      grid-auto-flow: column;
+      gap: 3px;
+    }
+    #golden-path-explorer .steps button {
+      padding: 0 2px;
+      font-size: 12px;
+      font-weight: 650;
+    }
+    #golden-path-explorer .steps [aria-pressed="true"] {
+      color: white;
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    #golden-path-explorer .detail { padding-top: 16px; }
+    #golden-path-explorer .detail h3 { font-size: 19px; line-height: 1.23; }
+    #golden-path-explorer .detail > p { margin-top: 5px; font-size: 15px; }
+    #golden-path-explorer .owners {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin: 13px 0 0;
+      border-top: 1px solid var(--line);
+    }
+    #golden-path-explorer .owners > div { padding: 9px 12px 0 0; }
+    #golden-path-explorer .owners > div + div {
+      border-left: 1px solid var(--line);
+      padding-inline: 12px 0;
+    }
+    #golden-path-explorer dt {
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 750;
+    }
+    #golden-path-explorer dd { margin: 3px 0 0; font-size: 14px; }
+    @media (max-width: 625px) {
+      #golden-path-explorer .lifecycle { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 385px) {
+      #golden-path-explorer .owners { grid-template-columns: 1fr; gap: 6px; }
+      #golden-path-explorer .owners > div + div {
+        border-left: 0;
+        padding-inline: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section id="golden-path-explorer" aria-labelledby="gpe-title">
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="azure-search" viewBox="0 0 18 18"><defs><linearGradient id="b198f9ad-224e-4f37-99bb-f1c5a20d3916" x1="9" y1="0.36" x2="9" y2="18.31" gradientUnits="userSpaceOnUse"><stop offset="0.18" stop-color="#5ea0ef" /><stop offset="1" stop-color="#0078d4" /></linearGradient></defs><title>Icon-web-44</title><path d="M18,11.32a4.12,4.12,0,0,0-3.51-4,5.15,5.15,0,0,0-5.25-5,5.25,5.25,0,0,0-5,3.49A4.86,4.86,0,0,0,0,10.59a5,5,0,0,0,5.07,4.82l.44,0h8.21a.78.78,0,0,0,.22,0A4.13,4.13,0,0,0,18,11.32Z" fill="url(#b198f9ad-224e-4f37-99bb-f1c5a20d3916)" /><path d="M12.33,6.59a3.07,3.07,0,0,0-5.61.85,3.16,3.16,0,0,0,.33,2.27L4.71,12.08a.79.79,0,0,0,0,1.12.78.78,0,0,0,.56.23.76.76,0,0,0,.56-.23l2.33-2.36a3.14,3.14,0,0,0,.81.33,3.08,3.08,0,0,0,3.36-4.58Zm-.54,2.1A2.16,2.16,0,0,1,9.7,10.34a1.79,1.79,0,0,1-.51-.07,1.87,1.87,0,0,1-.7-.32,2.13,2.13,0,0,1-.56-.56,2.17,2.17,0,0,1-.31-1.73A2.14,2.14,0,0,1,9.7,6a2.31,2.31,0,0,1,.52.06,2.18,2.18,0,0,1,1.32,1A2.13,2.13,0,0,1,11.79,8.69Z" fill="#f2f2f2" /><ellipse cx="9.69" cy="8.18" rx="2.15" ry="2.16" fill="#83b9f9" /></symbol><symbol id="azure-agent" viewBox="0 0 18 18"><defs><linearGradient id="uuid-c41a1b5d-c3ee-4413-bef2-f5a072ba936e" x1="7.28" y1="272.84" x2=".39" y2="267.87" gradientTransform="translate(0 280) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f42fd" /><stop offset=".8" stop-color="#7274ff" /></linearGradient><linearGradient id="uuid-7a8397bb-f82e-4b4e-8fb1-c49dc20eae52" x1="10.19" y1="268.41" x2="4.38" y2="265.16" gradientTransform="translate(0 280) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset=".25" stop-color="#4f42fd" /><stop offset="1" stop-color="#2c08ac" /></linearGradient><linearGradient id="uuid-364cb38b-25e6-4d45-a5f3-7f7567cf1947" x1="17.43" y1="267.02" x2="5.08" y2="264.98" gradientTransform="translate(0 280) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset=".2" stop-color="#7274ff" /><stop offset="1" stop-color="#4f42fd" /></linearGradient><linearGradient id="uuid-fb32e334-867d-4ede-bed1-56aecae762cb" x1="10.15" y1="273.41" x2="16.87" y2="269.71" gradientTransform="translate(0 280) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset=".25" stop-color="#4f42fd" /><stop offset="1" stop-color="#2c08ac" /></linearGradient><linearGradient id="uuid-257bedeb-cb4e-48ec-978d-667d943d4887" x1="17.68" y1="270.57" x2="8.68" y2="279.43" gradientTransform="translate(0 280) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f42fd" /><stop offset=".8" stop-color="#7274ff" /></linearGradient><linearGradient id="uuid-d24b3f2b-55bd-4731-8d82-2ccb3a949da7" x1="6.64" y1="271.02" x2="6.64" y2="278.12" gradientTransform="translate(0 280) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset=".25" stop-color="#4f42fd" /><stop offset="1" stop-color="#2c08ac" /></linearGradient></defs><path d="M5.02,15.31l-2.82-1.63c-.66-.38-1.06-1.08-1.06-1.83v-5.69c0-.76.4-1.46,1.06-1.83l1.53-.88c.1-.06.24.01.24.14v9.91c0,.37.1.73.28,1.04.18.32.45.59.78.78h0Z" fill="url(#uuid-c41a1b5d-c3ee-4413-bef2-f5a072ba936e)" /><path d="M10.14,10.59v1.76c0,.76-.4,1.46-1.06,1.83l-1.94,1.12c-.65.38-1.46.38-2.12,0-.33-.19-.59-.46-.78-.78-.18-.31-.28-.67-.28-1.04v-.42c0,.36.39.59.71.4l5.23-3.02c.1-.06.24.01.24.14Z" fill="url(#uuid-7a8397bb-f82e-4b4e-8fb1-c49dc20eae52)" /><path d="M16.86,9.53v3.26c0,.76-.4,1.46-1.06,1.83l-4.93,2.84c-.65.38-1.46.38-2.12,0l-1.53-.88c-.1-.06-.1-.21,0-.27l8.59-4.96c.32-.19.58-.45.76-.77.18-.32.28-.68.28-1.06Z" fill="url(#uuid-364cb38b-25e6-4d45-a5f3-7f7567cf1947)" /><path d="M10.22,7.46l1.53-.88c.65-.38,1.46-.38,2.12,0l1.94,1.12c.65.38,1.06,1.08,1.06,1.83,0,.38-.1.74-.28,1.06-.18.31-.44.58-.76.77l-.36.21c.31-.18.31-.63,0-.81l-5.23-3.02c-.1-.06-.1-.21,0-.27Z" fill="url(#uuid-fb32e334-867d-4ede-bed1-56aecae762cb)" /><path d="M5.94,2.16l2.82-1.63c.66-.38,1.46-.38,2.12,0l4.93,2.84c.65.38,1.06,1.08,1.06,1.83v1.76c0,.12-.13.2-.24.14L8.04,2.16c-.32-.18-.68-.28-1.05-.28-.37,0-.73.09-1.06.28h0Z" fill="url(#uuid-257bedeb-cb4e-48ec-978d-667d943d4887)" /><path d="M7.47,8.95l-1.53-.88c-.66-.38-1.06-1.08-1.06-1.83v-2.24c0-.76.4-1.46,1.06-1.83.33-.19.69-.28,1.06-.28s.72.09,1.04.28l.36.21c-.31-.18-.7.05-.7.41v6.04c0,.12-.13.2-.24.14h0Z" fill="url(#uuid-d24b3f2b-55bd-4731-8d82-2ccb3a949da7)" /></symbol><symbol id="azure-gateway" viewBox="0 0 18 18"><defs><clipPath id="uuid-562db301-56bd-45b0-915c-82a4f2277e80"><rect x=".38" y=".38" width="17.25" height="17.25" fill="none" /></clipPath><linearGradient id="uuid-2859d71d-31ae-4abe-9fcc-0bafc567faf0" x1="-611.4" y1="-205.23" x2="-611.4" y2="-224.06" gradientTransform="translate(617.13 -205.76) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3bd5ff" /><stop offset=".37" stop-color="#0fafff" /><stop offset=".71" stop-color="#9c6cfe" /><stop offset="1" stop-color="#bb45ea" /></linearGradient><linearGradient id="uuid-6097306d-a96e-4b55-af58-8c93ec52e898" x1="-604.85" y1="-207.94" x2="-604.85" y2="-224.5" gradientTransform="translate(617.13 -205.76) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0078d4" /><stop offset=".32" stop-color="#0094f0" /><stop offset=".65" stop-color="#6864f6" /><stop offset="1" stop-color="#a931d8" /></linearGradient><radialGradient id="uuid-a5b5da7b-9645-4aae-aa96-a7cb16b4141c" cx="114.65" cy="-115.18" fx="114.65" fy="-115.18" r=".96" gradientTransform="translate(9.87 -881.72) rotate(45) scale(5.47 -5.47)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#29c3ff" /><stop offset=".23" stop-color="#4894fe" /><stop offset=".5" stop-color="#6864f6" /><stop offset=".89" stop-color="#a931d8" /></radialGradient></defs><g clip-path="url(#uuid-562db301-56bd-45b0-915c-82a4f2277e80)"><g><path d="M11.02,1.15c-.55-.5-1.26-.78-2.02-.78-.81,0-1.56.31-2.13.88L1.26,6.87c-.57.57-.88,1.32-.88,2.13s.31,1.56.88,2.13l2.77,2.77,1.2,1.2c.83.83,2.12.94,3.07.33.05-.03.08-.08.08-.13,0-.05-.01-.11-.05-.15l-5.55-5.55c-.16-.16-.25-.38-.25-.6s.09-.44.25-.6l3.8-3.8,1.82-1.82.39-.38c.59-.59,1.35-.9,2.12-.93.08,0,.14-.05.17-.12.02-.07,0-.15-.05-.19Z" fill="url(#uuid-2859d71d-31ae-4abe-9fcc-0bafc567faf0)" /><path d="M16.74,6.87l-3.97-3.97c-.83-.83-2.12-.94-3.07-.33-.05.03-.08.08-.08.13,0,.05.01.11.05.15l5.55,5.55c.16.16.25.38.25.6s-.09.44-.25.6l-3.8,3.79-1.82,1.82-.39.38c-.59.59-1.34.89-2.11.93h-.01c-.07,0-.14.05-.16.12-.03.07,0,.15.05.19.55.5,1.27.78,2.02.78.8,0,1.56-.31,2.13-.88l5.62-5.62c.57-.57.88-1.32.88-2.13s-.31-1.56-.88-2.13Z" fill="url(#uuid-6097306d-a96e-4b55-af58-8c93ec52e898)" /><path d="M9,11.59c1.43,0,2.59-1.16,2.59-2.59s-1.16-2.59-2.59-2.59-2.59,1.16-2.59,2.59,1.16,2.59,2.59,2.59Z" fill="url(#uuid-a5b5da7b-9645-4aae-aa96-a7cb16b4141c)" /></g></g><rect width="18" height="18" fill="none" /></symbol></defs></svg>
+    <h2 id="gpe-title">Golden Path Explorer</h2>
+    <p class="intro">Choose a workload, then explore how each step works.</p>
+    <div class="workloads" role="group" aria-label="Workload">
+      <button type="button" aria-pressed="true"><svg width="15" height="15" viewBox="0 0 18 18" style="vertical-align:middle" aria-hidden="true"><use href="#azure-search" x="0" y="0" width="18" height="18" aria-hidden="true" pointer-events="none"/></svg> Secure Enterprise RAG</button>
+      <button type="button" aria-pressed="false"><svg width="15" height="15" viewBox="0 0 18 18" style="vertical-align:middle" aria-hidden="true"><use href="#azure-agent" x="0" y="0" width="18" height="18" aria-hidden="true" pointer-events="none"/></svg> Business-Process Agent</button>
+      <button type="button" aria-pressed="false"><svg width="15" height="15" viewBox="0 0 18 18" style="vertical-align:middle" aria-hidden="true"><use href="#azure-gateway" x="0" y="0" width="18" height="18" aria-hidden="true" pointer-events="none"/></svg> Governed Model API</button>
+    </div>
+    <p class="scenario">An internal assistant answers questions using approved HR policies.</p>
+
+    <div class="lifecycle" role="group" aria-label="Lifecycle">
+      <div class="phase" role="group" aria-labelledby="gpe-onboarding">
+        <span class="phase-name" id="gpe-onboarding">Onboarding</span>
+        <div class="steps">
+          <button type="button" aria-pressed="true">Request</button>
+          <button type="button" aria-pressed="false">Provision</button>
+        </div>
+      </div>
+      <div class="phase" role="group" aria-labelledby="gpe-delivery">
+        <span class="phase-name" id="gpe-delivery">Delivery</span>
+        <div class="steps">
+          <button type="button" aria-pressed="false">Build</button>
+          <button type="button" aria-pressed="false">Evaluate</button>
+          <button type="button" aria-pressed="false">Approve</button>
+          <button type="button" aria-pressed="false">Release</button>
+        </div>
+      </div>
+      <div class="phase" role="group" aria-labelledby="gpe-operations">
+        <span class="phase-name" id="gpe-operations">Operations</span>
+        <div class="steps">
+          <button type="button" aria-pressed="false">Operate</button>
+          <button type="button" aria-pressed="false">Improve</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail" aria-live="polite" aria-atomic="true">
+      <h3>Define the audience and data</h3>
+      <p>Request the RAG path for the people and documents the assistant will serve.</p>
+      <dl class="owners">
+        <div>
+          <dt>Platform provides</dt>
+          <dd>A standard request workflow for secure RAG.</dd>
+        </div>
+        <div>
+          <dt>Product team owns</dt>
+          <dd>Named workload owner, audience, data classification, environments and expected usage.</dd>
+        </div>
+      </dl>
+    </div>
+    <noscript><p>Enable JavaScript to explore the other workloads and steps.</p></noscript>
+  </section>
+  <script>
+    (() => {
+      const workloads = [
+        {
+          scenario: "An internal assistant answers questions using approved HR policies.",
+          steps: [
+            ["Define the audience and data",
+              "Request the RAG path for the people and documents the assistant will serve.",
+              "A standard request workflow for secure RAG.",
+              "Named workload owner, audience, data classification, environments and expected usage."],
+            ["Set up the Foundry project and search",
+              "Create a project with an approved model deployment and Azure AI Search.",
+              "Automated provisioning for the project, model, search, private connectivity, managed identity and RBAC.",
+              "Confirm who needs project access and which environments the workload requires."],
+            ["Connect authorised knowledge",
+              "Connect approved sources and check that each user can retrieve only the content they’re allowed to see.",
+              "A starter repository, project connections and baseline index configuration.",
+              "Source selection, access rules, ingestion, chunking and retrieval configuration."],
+            ["Check retrieval and grounded answers",
+              "Test whether the assistant finds the right documents and answers from them.",
+              "Pipeline evaluation runners and reporting for checks such as retrieval relevance and groundedness.",
+              "Representative questions, pass thresholds, safety checks and latency and cost targets."],
+            ["Review evidence for release",
+              "Review evaluation results and verify that document access works as intended.",
+              "A release gate and a consistent record of the evaluation results.",
+              "Decide if results meet the workload’s acceptance criteria and agree what happens when evidence is weak."],
+            ["Promote the tested configuration",
+              "Move versioned application and retrieval artefacts through DEV, UAT and PROD.",
+              "Deployment stages and environment-specific provisioning.",
+              "Validate sources, permissions and retrieval settings in the target environment."],
+            ["Monitor answers and source freshness",
+              "Track retrieval quality, stale sources, failures, token usage and cost.",
+              "Diagnostics and baseline telemetry.",
+              "Respond to incorrect answers, stale content and workload incidents."],
+            ["Improve retrieval using production evidence",
+              "Use missed answers and stale results to guide the next change.",
+              "Reusable evaluation and deployment workflows for testing changes.",
+              "Tune retrieval, update the test set and refine source freshness or deletion rules."]
+          ]
+        },
+        {
+          scenario: "An internal agent can raise service desk tickets through an approved tool.",
+          steps: [
+            ["Define the task and risk",
+              "Describe the actions the agent may take and flag those that need human confirmation.",
+              "An intake process and a supported internal-agent path.",
+              "Business task, users, data classification, risk tier and approval boundaries."],
+            ["Set up hosting and identity",
+              "Prepare the agent environment and the supported way to authenticate to tools.",
+              "Standard hosting, identity configuration and a starter repository.",
+              "Identify required tool permissions and scope them to the task."],
+            ["Connect approved tools",
+              "Connect the agent to the relevant tools in Foundry Toolbox and version its instructions and configuration.",
+              "A managed tool catalogue and supported authentication patterns.",
+              "Choose the model and agent type, permit specific tools and implement the approval interaction where required."],
+            ["Test actions and permissions",
+              "Check task completion, tool selection and inputs. Verify that disallowed actions fail safely.",
+              "Evaluation runners, tracing and baseline safety checks.",
+              "Test normal and denied actions, permission boundaries and resistance to prompt injection."],
+            ["Review risk and approval behaviour",
+              "Check that an authorised reviewer can approve or deny a proposed action before execution.",
+              "Risk-based pipeline gates and evaluation reporting.",
+              "Confirm approval and escalation behaviour with the appropriate business and risk owners."],
+            ["Publish the evaluated agent version",
+              "Promote an evaluated version and verify downstream access with the published agent identity.",
+              "Environment promotion stages and a publishing workflow.",
+              "Validate the published identity’s permissions and confirm the agent behaves as approved."],
+            ["Trace actions and exceptions",
+              "Review model calls, tool execution, denied actions, overrides and escalations.",
+              "Correlated telemetry for agent and tool activity.",
+              "Investigate workload incidents and decide how to handle failures and exceptions."],
+            ["Refine instructions and tool use",
+              "Use failures and escalations to identify where the agent needs a change.",
+              "Shared evaluation workflows and governance for Toolbox changes.",
+              "Update instructions or tool use, add regression cases and re-evaluate before release."]
+          ]
+        },
+        {
+          scenario: "Several applications use shared endpoints to access approved models.",
+          steps: [
+            ["Request model capacity",
+              "Describe the capability the application needs and its expected usage.",
+              "An approved catalogue of model and deployment options.",
+              "Traffic, latency, geography, data classification and budget requirements."],
+            ["Allocate capacity and access",
+              "Set up the endpoint and apply shared gateway controls where required.",
+              "Endpoint provisioning, Entra authentication, quotas, token limits and baseline logging.",
+              "Confirm capacity needs and whether the application needs its own limits and usage attribution."],
+            ["Integrate the model endpoint",
+              "Connect the application to the approved endpoint in a test environment.",
+              "Endpoint configuration, SDK examples and a test environment.",
+              "Choose what data to send and implement the application’s retry and fallback behaviour."],
+            ["Validate quality and service limits",
+              "Test output quality, latency, throttling, fallback and cost under expected demand.",
+              "A test endpoint with the supported authentication and limit policies.",
+              "Define acceptance thresholds and run representative quality and load tests."],
+            ["Review readiness for production access",
+              "Review test evidence and check the requested production capacity and limits.",
+              "An access workflow and a way to enforce the approved policies.",
+              "Demonstrate that the application meets its quality, latency and cost targets."],
+            ["Enable production access",
+              "Move the application to the governed production endpoint.",
+              "Production endpoint access, logging and gateway policies where used.",
+              "Update the application configuration and verify authentication and quota behaviour."],
+            ["Monitor model use and health",
+              "Track consumption, errors, throttling, latency and spend.",
+              "Standard usage logging, quota enforcement and baseline health monitoring.",
+              "Review application usage and respond to failures or budget overruns."],
+            ["Tune capacity and model choice",
+              "Use quality, latency and cost data to decide whether routing or fallback would help.",
+              "Usage and health data and a supported way to request capacity or policy changes.",
+              "Validate the benefit of any change against the workload’s quality and cost requirements."]
+          ]
+        }
+      ];
+
+      const explorer = document.getElementById("golden-path-explorer");
+      const workloadButtons = [...explorer.querySelectorAll(".workloads button")];
+      const stepButtons = [...explorer.querySelectorAll(".steps button")];
+      const scenario = explorer.querySelector(".scenario");
+      const detailFields = [...explorer.querySelectorAll(".detail h3, .detail > p, .detail dd")];
+      let activeWorkload = 0;
+      let activeStep = 0;
+
+      function render() {
+        const workload = workloads[activeWorkload];
+        scenario.textContent = workload.scenario;
+        workloadButtons.forEach((button, index) => {
+          button.setAttribute("aria-pressed", index === activeWorkload);
+        });
+        stepButtons.forEach((button, index) => {
+          button.setAttribute("aria-pressed", index === activeStep);
+        });
+        detailFields.forEach((field, index) => {
+          field.textContent = workload.steps[activeStep][index];
+        });
+      }
+
+      workloadButtons.forEach((button, index) => {
+        button.addEventListener("click", () => {
+          activeWorkload = index;
+          render();
+        });
+      });
+      stepButtons.forEach((button, index) => {
+        button.addEventListener("click", () => {
+          activeStep = index;
+          render();
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
